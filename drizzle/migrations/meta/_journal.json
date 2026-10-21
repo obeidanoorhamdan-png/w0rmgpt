@@ -1,5 +1,13 @@
 {
   "version": "7",
   "dialect": "postgresql",
-  "entries": []
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1792604009822,
+      "tag": "0000_worm_core",
+      "breakpoints": true
+    }
+  ]
 }

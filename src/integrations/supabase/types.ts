@@ -14,13 +14,239 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      admin_log: {
+        Row: {
+          action: string
+          created_at: string
+          details: string | null
+          id: number
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          details?: string | null
+          id?: number
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          details?: string | null
+          id?: number
+        }
+        Relationships: []
+      }
+      app_settings: {
+        Row: {
+          admin_password_hash: string
+          announcement: string | null
+          api_key_override: string | null
+          api_url: string
+          daily_credits: number
+          default_model: string
+          disabled_models: Json
+          id: number
+          system_prompt: string
+          updated_at: string
+        }
+        Insert: {
+          admin_password_hash: string
+          announcement?: string | null
+          api_key_override?: string | null
+          api_url?: string
+          daily_credits?: number
+          default_model?: string
+          disabled_models?: Json
+          id?: number
+          system_prompt?: string
+          updated_at?: string
+        }
+        Update: {
+          admin_password_hash?: string
+          announcement?: string | null
+          api_key_override?: string | null
+          api_url?: string
+          daily_credits?: number
+          default_model?: string
+          disabled_models?: Json
+          id?: number
+          system_prompt?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      gift_codes: {
+        Row: {
+          code: string
+          created_at: string
+          days: number
+          max_uses: number
+          plan: string
+          uses: number
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          days?: number
+          max_uses?: number
+          plan: string
+          uses?: number
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          days?: number
+          max_uses?: number
+          plan?: string
+          uses?: number
+        }
+        Relationships: []
+      }
+      messages: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          model: string | null
+          role: string
+          thread_id: string
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          model?: string | null
+          role: string
+          thread_id: string
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          model?: string | null
+          role?: string
+          thread_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "messages_thread_id_fkey"
+            columns: ["thread_id"]
+            isOneToOne: false
+            referencedRelation: "threads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          bio: string | null
+          bonus_credits: number
+          created_at: string
+          credits: number
+          display_name: string | null
+          email: string | null
+          id: string
+          invited_by: string | null
+          last_daily_grant: string
+          messages_count: number
+          plan: string
+          plan_expires_at: string | null
+          short_id: string
+          suspended: boolean
+        }
+        Insert: {
+          avatar_url?: string | null
+          bio?: string | null
+          bonus_credits?: number
+          created_at?: string
+          credits?: number
+          display_name?: string | null
+          email?: string | null
+          id: string
+          invited_by?: string | null
+          last_daily_grant?: string
+          messages_count?: number
+          plan?: string
+          plan_expires_at?: string | null
+          short_id?: string
+          suspended?: boolean
+        }
+        Update: {
+          avatar_url?: string | null
+          bio?: string | null
+          bonus_credits?: number
+          created_at?: string
+          credits?: number
+          display_name?: string | null
+          email?: string | null
+          id?: string
+          invited_by?: string | null
+          last_daily_grant?: string
+          messages_count?: number
+          plan?: string
+          plan_expires_at?: string | null
+          short_id?: string
+          suspended?: boolean
+        }
+        Relationships: []
+      }
+      redemptions: {
+        Row: {
+          code: string
+          created_at: string
+          user_id: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          user_id: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      threads: {
+        Row: {
+          created_at: string
+          id: string
+          model: string | null
+          pinned: boolean
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          model?: string | null
+          pinned?: boolean
+          title?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          model?: string | null
+          pinned?: boolean
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      claim_daily: { Args: never; Returns: undefined }
     }
     Enums: {
       [_ in never]: never

@@ -12,3 +12,6 @@
 - AI chat calls go through the server route `src/routes/api/chat.ts` using the admin-configured URL/key in `app_settings` (fallback secret `WORM_API_KEY`); the key never reaches the browser.
 - Admin panel (`/Aobeida`) auth is a password hash in `app_settings` plus an HMAC token signed with `ADMIN_SESSION_SECRET`; every admin server function verifies that token.
 - Credits/plan fields on `profiles` are only writable server-side (column-level grants), so users cannot raise their own credits.
+- Images and live voice use authenticated server-owned Lovable AI Gateway calls independently of the existing custom text service; private keys never enter the browser.
+- Live calls retain the bundled persistent relay and media hook lifecycle so Stop, heartbeat expiry, and navigation release billable sessions.
+- Generated images belong to their authenticated owner; AI service denial state is stored server-only to prevent retrying blocked services across restarts.

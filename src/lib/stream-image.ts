@@ -31,7 +31,8 @@ export async function streamImage(
   };
   const res = await send(true);
   if (!res.ok || !res.body) {
-    throw new Error(`Image generation failed: ${res.status} ${await res.text().catch(() => "")}`);
+    const error = await res.json().catch(() => null) as { message?: string; error?: { message?: string } | string } | null;
+    throw new Error(error?.message ?? (typeof error?.error === "string" ? error.error : error?.error?.message) ?? `تعذر إنشاء الصورة (${res.status})`);
   }
 
   let sawCompleted = false;
@@ -91,7 +92,8 @@ export async function streamImage(
   if (!sawAnyEvent) {
     const replay = await send(false);
     if (!replay.ok) {
-      throw new Error(`Image generation failed: ${replay.status} ${await replay.text().catch(() => "")}`);
+      const error = await replay.json().catch(() => null) as { message?: string; error?: { message?: string } } | null;
+      throw new Error(error?.message ?? error?.error?.message ?? `تعذر إنشاء الصورة (${replay.status})`);
     }
     const json = (await replay.json()) as { data?: { b64_json?: string }[] };
     const b64 = json.data?.[0]?.b64_json;

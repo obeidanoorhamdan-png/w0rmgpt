@@ -31,6 +31,7 @@ const initialState: LiveState = {
 export function useLiveVoice(
   options: {
     url?: string;
+    getAccessToken?: () => Promise<string>;
     onEvent?: (event: LiveEvent) => void | Promise<void>;
   } = {},
 ) {
@@ -72,6 +73,7 @@ export function useLiveVoice(
     const voice = createLiveVoice({
       url: endpoint.href,
       audio,
+      getAccessToken: latest.current.getAccessToken,
       onEvent(event) {
         if (!mounted.current || controller.current !== voice) return;
         if (event.type === "app.connected") {
@@ -122,6 +124,7 @@ export function useLiveVoice(
 type LiveOptions = {
   url: string;
   audio: HTMLAudioElement;
+  getAccessToken?: () => Promise<string>;
   onEvent: (event: LiveEvent) => void;
 };
 
@@ -301,6 +304,8 @@ function createLiveVoice(options: LiveOptions) {
     state = "starting";
     window.addEventListener("pagehide", stop);
     try {
+      const token = await options.getAccessToken?.();
+      if (!starting()) return;
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: { echoCancellation: true, noiseSuppression: true },
       });
@@ -351,7 +356,7 @@ function createLiveVoice(options: LiveOptions) {
       deadline = setTimeout(() => fail("Voice session did not start"), 50_000);
       socket.onopen = () => {
         if (!starting()) return release();
-        send({ type: "app.start", sdp });
+        send({ type: "app.start", sdp, token });
       };
       socket.onmessage = ({ data }) => {
         try {

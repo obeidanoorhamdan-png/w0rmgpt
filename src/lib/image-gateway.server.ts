@@ -5,11 +5,11 @@ export type ImageConfig = {
   format: "openai" | "gemini-chat" | "generate-content" | "cloudflare-input";
 };
 
-export function generateImage(config: ImageConfig, prompt: string, stream = true, signal?: AbortSignal) {
+export function generateImage(config: ImageConfig, prompt: string, stream = true, signal?: AbortSignal, settings: { size: string; quality: string } = { size: "1024x1024", quality: "medium" }) {
   let input: Record<string, unknown>;
   switch (config.format) {
     case "openai":
-      input = { prompt, ...(stream ? { partial_images: 1 } : {}) };
+      input = { prompt, ...settings, ...(stream ? { partial_images: 1 } : {}) };
       break;
     case "cloudflare-input":
       input = { input: { prompt } };
@@ -110,3 +110,5 @@ export async function editImage(config: ImageConfig, form: FormData, signal?: Ab
     signal: signal ?? null,
   });
 }
+
+export const imageSettings = { baseURL: "https://ai.gateway.lovable.dev", model: "openai/gpt-image-2.5-sunburst", format: "openai" as const };

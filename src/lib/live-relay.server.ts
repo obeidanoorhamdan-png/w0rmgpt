@@ -1,7 +1,7 @@
 import { createOpenAI } from "@ai-sdk/openai";
-import { stepCountIs, streamText, tool, type ModelMessage } from "ai";
+import { stepCountIs, streamText, type ModelMessage } from "ai";
 import process from "node:process";
-import { z } from "zod";
+import { authorizeMedia, assertServiceAvailable, pauseService } from "./media-access.server";
 
 export type LiveConfig = {
   baseURL: string;
@@ -12,7 +12,7 @@ export type LiveConfig = {
 };
 
 // Fill from co-loaded knowledge: the gateway URL, the Live model and the resolved chat model.
-const liveSettings = { baseURL: "", liveModel: "", backendModel: "" };
+const liveSettings = { baseURL: "https://ai.gateway.lovable.dev", liveModel: "openai/gpt-live-1", backendModel: "openai/gpt-6-astra" };
 
 export type LiveSocket = {
   readonly readyState: number;
@@ -51,6 +51,7 @@ export function getLiveConfig(): LiveConfig {
   const config: LiveConfig = {
     ...liveSettings,
     key: process.env["LOVABLE_API_KEY"] ?? "",
+    openingInstructions: "ابدأ بتحية عربية قصيرة: أهلاً، أنا WORM GPT. كيف يمكنني مساعدتك اليوم؟ ثم استمع.",
   };
   if ([config.baseURL, config.key, config.liveModel, config.backendModel].some((value) => !value)) {
     throw new Error("Missing Live relay configuration");
@@ -111,35 +112,15 @@ export function handleLiveRequest(request: Request): Response {
   return new Response(null, response);
 }
 
-const conversationInstructions = `You are Mira, a calm learning companion.
-Speak naturally in brief replies. Ask a focused question when details are unclear.
-Backchannel policy: Use moderate listening sounds without taking over.
-Interruption policy: Stop your answer and listen when the user interrupts.
+const conversationInstructions = `أنت WORM GPT، مساعد عربي محترف وودود. تحدث بالعربية بصورة طبيعية ومختصرة، واسأل عندما تكون التفاصيل غير واضحة.
+Backchannel policy: استخدم إشارات استماع قليلة وطبيعية دون الاستحواذ على الحديث.
+Interruption policy: توقف عن الكلام عند مقاطعتك واستمع للتصحيح، مع الاحتفاظ بالمهمة الخلفية.
 Delegation policy:
-Backend tools: Reason through questions and plan study sessions across days.
-Delegate to the backend when: The user wants a study schedule or careful reasoning,
-or a correction changes a question already being worked on.
-Do not delegate to the backend when: Greeting, clarifying a question, or repeating
-a still-current answer. Wait for the backend result before presenting its answer.`;
-
-const studyScheduleInput = z
-  .object({
-    total_minutes: z.number().int().min(1).max(10_080),
-    days: z.number().int().min(1).max(30),
-  })
-  .strict();
-
-function planStudySchedule(args: z.infer<typeof studyScheduleInput>) {
-  const daily = Math.floor(args.total_minutes / args.days);
-  return {
-    total_minutes: args.total_minutes,
-    days: args.days,
-    sessions: Array.from({ length: args.days }, (_, index) => ({
-      day: index + 1,
-      minutes: daily + (index < args.total_minutes % args.days ? 1 : 0),
-    })),
-  };
-}
+Backend tools: التفكير الدقيق والإجابة عن الأسئلة والشرح والبرمجة، دون تنفيذ أي إجراءات خارجية.
+Delegate to the backend when: يحتاج السؤال إلى تفكير دقيق أو حساب أو برمجة، أو يصحح المستخدم سؤالاً قيد المعالجة.
+Do not delegate to the backend when: التحية أو طلب التوضيح أو تكرار إجابة ما زالت صحيحة.
+انتظر النتيجة المتحققة ولا تدّع تنفيذ أعمال أو إنشاء صور داخل المكالمة.
+ارفض البرمجيات الخبيثة واختراق الآخرين والاحتيال والأسلحة والأذى الجسيم. كن محترماً.`;
 
 function isListeningSound(text: string) {
   const normalized = text.toLowerCase().replace(/[\s\p{Pd}]/gu, "");
@@ -152,7 +133,6 @@ async function answerQuestion(
   correlation: { runID: string; sessionID: string | undefined; delegationID: string },
   signal: AbortSignal,
   consumeInput: () => void,
-  onPlan: (plan: ReturnType<typeof planStudySchedule>) => void,
 ) {
   signal.throwIfAborted();
   const provider = createOpenAI({
@@ -199,27 +179,8 @@ async function answerQuestion(
           : {}),
       },
     },
-    system:
-      "Help a spoken learning companion answer the latest user question. " +
-      "Transcripts may be incomplete or corrected. Use the latest correction. " +
-      "Continue from completed tool results; do not repeat completed actions. " +
-      "Return verified facts and useful next steps in at most 150 words. " +
-      "To display a study schedule for the current request, call plan_study_schedule with its total minutes and days. " +
-      "Ask for missing details instead of guessing. The tool only calculates a draft plan; " +
-      "it does not save calendar events. You have no other tools.",
+    system: "أجب عن أحدث سؤال للمستخدم بالعربية بإيجاز وبشكل دقيق. قد تكون النصوص المنطوقة غير مكتملة؛ اتبع أحدث تصحيح. لا تختلق نتائج أو تنفذ إجراءات خارجية. ارفض البرمجيات الخبيثة واختراق الآخرين والاحتيال والأسلحة والأذى الجسيم.",
     messages,
-    tools: {
-      plan_study_schedule: tool({
-        description: "Distribute a total study time evenly across days and return a draft schedule.",
-        inputSchema: studyScheduleInput,
-        execute: async (args) => {
-          signal.throwIfAborted();
-          const plan = planStudySchedule(args);
-          onPlan(plan);
-          return plan;
-        },
-      }),
-    },
   });
   let completed = false;
   let stepCompleted = false;
@@ -232,7 +193,8 @@ async function answerQuestion(
       if (part.rawValue.type === "response.failed" || part.rawValue.type === "response.incomplete") failed = true;
     }
     if (part.type === "finish-step" && !stepCompleted) failed = true;
-    if (part.type === "error" || part.type === "abort") failed = true;
+    if (part.type === "error") throw part.error;
+    if (part.type === "abort") failed = true;
     if (part.type === "finish") completed = part.finishReason === "stop";
   }
   signal.throwIfAborted();
@@ -285,7 +247,6 @@ export function bindLiveConnection(
   let task: AbortController | undefined;
   const pendingDelegations: Array<{
     event: ProviderEvent;
-    plan?: ReturnType<typeof planStudySchedule>;
   }> = [];
   let completedDelegation: (typeof pendingDelegations)[number] | undefined;
   const backendMessages: ModelMessage[] = [];
@@ -406,7 +367,7 @@ export function bindLiveConnection(
     restartTimer = setTimeout(() => void runDelegation(), 300);
   }
 
-  function deliverResult(delegationID: string, answer: string, plan?: ReturnType<typeof planStudySchedule>) {
+  function deliverResult(delegationID: string, answer: string) {
     if (closing) return;
     if (gateway?.readyState !== 1) return stop();
     try {
@@ -420,7 +381,6 @@ export function bindLiveConnection(
           }),
         );
       }
-      if (plan) emit({ type: "app.study_schedule.plan", delegation_id: delegationID, plan });
       completedDelegation = pendingDelegations.shift();
     } catch {
       stop();
@@ -444,27 +404,27 @@ export function bindLiveConnection(
         controller.signal,
         () => {
           const updates = transcripts.slice(transcriptCursor);
-          if (updates.some(({ role, listeningSound }) => role === "user" && !listeningSound)) delete pending.plan;
           backendMessages.push(...updates.map(({ role, text }) => ({ role, content: text })));
           transcriptCursor = transcripts.length;
           taskRevision = revision;
         },
-        (plan) => {
-          pending.plan = plan;
-        },
       );
       if (closing || controller.signal.aborted) return;
       if (taskRevision !== revision) return;
-      deliverResult(id, answer.trim(), pending.plan);
-    } catch {
+      deliverResult(id, answer.trim());
+    } catch (error) {
       if (closing || controller.signal.aborted) return;
+      const message = error instanceof Error ? error.message : "تعذر إكمال الإجابة الصوتية";
+      if (error && typeof error === "object" && "statusCode" in error && (error.statusCode === 403 || error.statusCode === 402)) await pauseService("voice", Number(error.statusCode), message);
+      emit({ type: "app.error", error: { message } });
+      stop();
       backendMessages.push({
         role: "assistant",
         content:
           "The backend attempt failed. Completed tool results remain valid; verify uncertain external actions before any retry.",
       });
       if (taskRevision !== revision) return;
-      deliverResult(id, "The backend could not finish the answer. Ask whether the user wants to try again.");
+      return;
     } finally {
       if (task === controller) task = undefined;
       scheduleDelegation();
@@ -484,6 +444,7 @@ export function bindLiveConnection(
       if (browser.readyState === 1) browser.send(data);
       if (event.type === "session.closed") return finish();
       if (event.type === "gateway.session.closing" || event.type === "gateway.error" || event.type === "app.error") {
+        if (event.type === "gateway.error") execution.waitUntil(pauseService("voice", 403, event.error?.message ?? "خدمة الصوت متوقفة"));
         return stop();
       }
       if (closing) return;
@@ -504,7 +465,7 @@ export function bindLiveConnection(
               type: "session.commentary.append",
               event_id: greetingCommand.id,
               delegation_id: null,
-              content: "Begin the conversation now, following the instructions provided.",
+              content: "ابدأ الحديث الآن بالعربية وفق التعليمات.",
             }),
           );
         } else {
@@ -563,7 +524,9 @@ export function bindLiveConnection(
     }
   }
 
-  async function startSession(sdp: string) {
+  async function startSession(sdp: string, token: unknown) {
+    await authorizeMedia(token);
+    await assertServiceAvailable("voice");
     if (closing || browser.readyState !== 1) return;
     clearTimeout(startTimer);
     startupTimer = setTimeout(() => {
@@ -616,7 +579,7 @@ export function bindLiveConnection(
         }
         starting = true;
         execution.waitUntil(
-          startSession(event.sdp).catch((error) => {
+          startSession(event.sdp, event.token).catch((error) => {
             if (!closing)
               emit({
                 type: "app.error",

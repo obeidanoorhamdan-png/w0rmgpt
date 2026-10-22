@@ -15,8 +15,11 @@ import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as AuthenticatedAccountRouteImport } from './routes/_authenticated/account'
+import { Route as AuthenticatedImagesRouteImport } from './routes/_authenticated/images'
 import { Route as AuthenticatedPlansRouteImport } from './routes/_authenticated/plans'
+import { Route as AuthenticatedVoiceRouteImport } from './routes/_authenticated/voice'
 import { Route as ApiChatRouteImport } from './routes/api/chat'
+import { Route as ApiGenerateImageRouteImport } from './routes/api/generate-image'
 import { Route as AuthenticatedChatIndexRouteImport } from './routes/_authenticated/chat.index'
 import { Route as AuthenticatedChatThreadIdRouteImport } from './routes/_authenticated/chat.$threadId'
 
@@ -49,14 +52,29 @@ const AuthenticatedAccountRoute = AuthenticatedAccountRouteImport.update({
   path: '/account',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedImagesRoute = AuthenticatedImagesRouteImport.update({
+  id: '/images',
+  path: '/images',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedPlansRoute = AuthenticatedPlansRouteImport.update({
   id: '/plans',
   path: '/plans',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedVoiceRoute = AuthenticatedVoiceRouteImport.update({
+  id: '/voice',
+  path: '/voice',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const ApiChatRoute = ApiChatRouteImport.update({
   id: '/api/chat',
   path: '/api/chat',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiGenerateImageRoute = ApiGenerateImageRouteImport.update({
+  id: '/api/generate-image',
+  path: '/api/generate-image',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedChatIndexRoute = AuthenticatedChatIndexRouteImport.update({
@@ -77,8 +95,11 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/reset-password': typeof ResetPasswordRoute
   '/account': typeof AuthenticatedAccountRoute
+  '/images': typeof AuthenticatedImagesRoute
   '/plans': typeof AuthenticatedPlansRoute
+  '/voice': typeof AuthenticatedVoiceRoute
   '/api/chat': typeof ApiChatRoute
+  '/api/generate-image': typeof ApiGenerateImageRoute
   '/chat/$threadId': typeof AuthenticatedChatThreadIdRoute
   '/chat/': typeof AuthenticatedChatIndexRoute
 }
@@ -88,8 +109,11 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/reset-password': typeof ResetPasswordRoute
   '/account': typeof AuthenticatedAccountRoute
+  '/images': typeof AuthenticatedImagesRoute
   '/plans': typeof AuthenticatedPlansRoute
+  '/voice': typeof AuthenticatedVoiceRoute
   '/api/chat': typeof ApiChatRoute
+  '/api/generate-image': typeof ApiGenerateImageRoute
   '/chat/$threadId': typeof AuthenticatedChatThreadIdRoute
   '/chat': typeof AuthenticatedChatIndexRoute
 }
@@ -101,8 +125,11 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/reset-password': typeof ResetPasswordRoute
   '/_authenticated/account': typeof AuthenticatedAccountRoute
+  '/_authenticated/images': typeof AuthenticatedImagesRoute
   '/_authenticated/plans': typeof AuthenticatedPlansRoute
+  '/_authenticated/voice': typeof AuthenticatedVoiceRoute
   '/api/chat': typeof ApiChatRoute
+  '/api/generate-image': typeof ApiGenerateImageRoute
   '/_authenticated/chat/$threadId': typeof AuthenticatedChatThreadIdRoute
   '/_authenticated/chat/': typeof AuthenticatedChatIndexRoute
 }
@@ -114,8 +141,11 @@ export interface FileRouteTypes {
     | '/auth'
     | '/reset-password'
     | '/account'
+    | '/images'
     | '/plans'
+    | '/voice'
     | '/api/chat'
+    | '/api/generate-image'
     | '/chat/$threadId'
     | '/chat/'
   fileRoutesByTo: FileRoutesByTo
@@ -125,8 +155,11 @@ export interface FileRouteTypes {
     | '/auth'
     | '/reset-password'
     | '/account'
+    | '/images'
     | '/plans'
+    | '/voice'
     | '/api/chat'
+    | '/api/generate-image'
     | '/chat/$threadId'
     | '/chat'
   id:
@@ -137,8 +170,11 @@ export interface FileRouteTypes {
     | '/auth'
     | '/reset-password'
     | '/_authenticated/account'
+    | '/_authenticated/images'
     | '/_authenticated/plans'
+    | '/_authenticated/voice'
     | '/api/chat'
+    | '/api/generate-image'
     | '/_authenticated/chat/$threadId'
     | '/_authenticated/chat/'
   fileRoutesById: FileRoutesById
@@ -150,6 +186,7 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   ApiChatRoute: typeof ApiChatRoute
+  ApiGenerateImageRoute: typeof ApiGenerateImageRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -196,6 +233,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAccountRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/images': {
+      id: '/_authenticated/images'
+      path: '/images'
+      fullPath: '/images'
+      preLoaderRoute: typeof AuthenticatedImagesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/plans': {
       id: '/_authenticated/plans'
       path: '/plans'
@@ -203,11 +247,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedPlansRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/voice': {
+      id: '/_authenticated/voice'
+      path: '/voice'
+      fullPath: '/voice'
+      preLoaderRoute: typeof AuthenticatedVoiceRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/api/chat': {
       id: '/api/chat'
       path: '/api/chat'
       fullPath: '/api/chat'
       preLoaderRoute: typeof ApiChatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/generate-image': {
+      id: '/api/generate-image'
+      path: '/api/generate-image'
+      fullPath: '/api/generate-image'
+      preLoaderRoute: typeof ApiGenerateImageRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated/chat/': {
@@ -229,14 +287,18 @@ declare module '@tanstack/react-router' {
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedAccountRoute: typeof AuthenticatedAccountRoute
+  AuthenticatedImagesRoute: typeof AuthenticatedImagesRoute
   AuthenticatedPlansRoute: typeof AuthenticatedPlansRoute
+  AuthenticatedVoiceRoute: typeof AuthenticatedVoiceRoute
   AuthenticatedChatThreadIdRoute: typeof AuthenticatedChatThreadIdRoute
   AuthenticatedChatIndexRoute: typeof AuthenticatedChatIndexRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAccountRoute: AuthenticatedAccountRoute,
+  AuthenticatedImagesRoute: AuthenticatedImagesRoute,
   AuthenticatedPlansRoute: AuthenticatedPlansRoute,
+  AuthenticatedVoiceRoute: AuthenticatedVoiceRoute,
   AuthenticatedChatThreadIdRoute: AuthenticatedChatThreadIdRoute,
   AuthenticatedChatIndexRoute: AuthenticatedChatIndexRoute,
 }
@@ -251,6 +313,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   ApiChatRoute: ApiChatRoute,
+  ApiGenerateImageRoute: ApiGenerateImageRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

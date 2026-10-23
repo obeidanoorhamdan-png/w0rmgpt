@@ -35,7 +35,8 @@ export async function handleSubscriptions(request: Request, secret: string | und
     if (request.method === "PATCH") {
       const parsed = subscriptionUpdateSchema.safeParse(await request.json());
       if (!parsed.success) return reply({ error: "Invalid subscription fields" }, 400);
-      const { data, error } = await db.from("gift_codes").update(parsed.data).eq("code", code).select("code,plan,days,max_uses,uses,created_at").maybeSingle();
+      const patch = { ...(parsed.data.plan !== undefined ? { plan: parsed.data.plan } : {}), ...(parsed.data.days !== undefined ? { days: parsed.data.days } : {}), ...(parsed.data.max_uses !== undefined ? { max_uses: parsed.data.max_uses } : {}) };
+      const { data, error } = await db.from("gift_codes").update(patch).eq("code", code).select("code,plan,days,max_uses,uses,created_at").maybeSingle();
       if (error) return reply({ error: "Update failed" }, 500);
       if (!data) return reply({ error: "Code not found" }, 404);
       await db.from("admin_log").insert({ action: "API تعديل كود", details: code });

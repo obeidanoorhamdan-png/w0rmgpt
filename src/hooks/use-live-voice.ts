@@ -7,6 +7,9 @@ export type LiveEvent = {
   usage?: { seconds?: number };
   finalized?: boolean;
   transport?: { type?: string; sdp?: string };
+  delta?: string;
+  start_ms?: number;
+  end_ms?: number;
   [key: string]: unknown;
 };
 
@@ -124,7 +127,7 @@ export function useLiveVoice(
 type LiveOptions = {
   url: string;
   audio: HTMLAudioElement;
-  getAccessToken?: () => Promise<string>;
+  getAccessToken?: (() => Promise<string>) | undefined;
   onEvent: (event: LiveEvent) => void;
 };
 
@@ -362,6 +365,7 @@ function createLiveVoice(options: LiveOptions) {
         try {
           const event: LiveEvent = JSON.parse(data);
           if (event.type === "gateway.session.created") {
+            if (event.error) { options.onEvent({ type: "app.error", error: { message: "تعذّر بدء الخدمة الصوتية. حاول لاحقاً." } }); return stop(); }
             void applyAnswer(event).catch(() => fail("Voice media negotiation failed"));
           } else if (event.type === "session.started") {
             activate();

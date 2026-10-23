@@ -118,3 +118,9 @@
 .prose-worm td,.prose-worm th { border: 1px solid var(--border); padding: .35rem .6rem; }
 .prose-worm a { color: var(--primary); text-decoration: underline; }
 .prose-worm p { margin: .35rem 0; }
+.prose-worm { overflow-wrap: anywhere; }
+.voice-emblem { display: grid; place-items: center; width: 160px; height: 160px; border: 1px solid var(--border); border-radius: 50%; }
+.voice-emblem.is-connected { border-color: var(--primary); box-shadow: var(--shadow-glow); }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; }
+}

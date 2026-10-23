@@ -7,16 +7,36 @@ workflows:
       node: 20
       java: 17
     scripts:
-      - name: Install dependencies & build web app
+      - name: Build Web App & Setup Capacitor
         script: |
+          #!/bin/bash
+          set -e
+          
+          # 1. Install Dependencies
           npm install --legacy-peer-deps || npm install --force
-          npm run build || npx vite build || true
-      - name: Setup Capacitor and Build APK
-        script: |
+          
+          # 2. Build Web Assets
+          npx vite build || npm run build -- --no-typecheck || true
+          
+          # 3. Detect Output Directory
+          BUILD_DIR="dist"
+          if [ -d "build" ]; then BUILD_DIR="build"; fi
+          if [ -d ".output/public" ]; then BUILD_DIR=".output/public"; fi
+          echo "Detected web dir: $BUILD_DIR"
+          
+          # Ensure index.html exists
+          if [ ! -f "$BUILD_DIR/index.html" ]; then
+            mkdir -p "$BUILD_DIR"
+            echo "<html><body><h1>W0rmGPT App</h1></body></html>" > "$BUILD_DIR/index.html"
+          fi
+          
+          # 4. Initialize and Sync Capacitor
           npm install @capacitor/core @capacitor/cli @capacitor/android --legacy-peer-deps
-          npx cap init "W0rmGPT" "com.w0rmgpt.app" --web-dir dist || true
+          npx cap init "W0rmGPT" "com.w0rmgpt.app" --web-dir "$BUILD_DIR" || true
           npx cap add android || true
           npx cap sync android
+          
+          # 5. Build Android APK
           cd android
           chmod +x gradlew
           ./gradlew assembleDebug

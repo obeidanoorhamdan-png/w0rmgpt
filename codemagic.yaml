@@ -36,7 +36,20 @@ workflows:
           npx cap add android || true
           npx cap sync android
           
-          # 5. Build Android APK
+          # 5. Fix Duplicate Kotlin Standard Library Dependency Conflict
+          if [ -d "android" ]; then
+            cat << 'EOF' >> android/app/build.gradle
+
+configurations.all {
+    resolutionStrategy {
+        exclude group: 'org.jetbrains.kotlin', module: 'kotlin-stdlib-jdk7'
+        exclude group: 'org.jetbrains.kotlin', module: 'kotlin-stdlib-jdk8'
+    }
+}
+EOF
+          fi
+          
+          # 6. Build Android APK
           cd android
           chmod +x gradlew
           ./gradlew assembleDebug

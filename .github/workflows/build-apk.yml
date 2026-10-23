@@ -32,20 +32,20 @@ jobs:
         run: |
           npm run build
 
-      - name: Setup Capacitor for Lovable
+      - name: Setup Capacitor and Android Folder
         run: |
-          npm install @capacitor/core @capacitor/cli @capacitor/android
-          npx cap init "ObeidaApp" "com.obeida.app" --web-dir dist || true
+          npm install @capacitor/core @capacitor/cli @capacitor/android --legacy-peer-deps
+          npx cap init "W0rmGPT" "com.w0rmgpt.app" --web-dir dist || true
           npx cap add android || true
           npx cap sync android
 
-      - name: Build APK with Gradle
+      - name: Build APK via Gradle
         run: |
           cd android
           chmod +x gradlew
           ./gradlew assembleDebug
 
-      - name: Upload APK Artifact
+      - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: Lovable-App-APK

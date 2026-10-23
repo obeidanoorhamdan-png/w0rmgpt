@@ -66,6 +66,7 @@ export type Database = {
           default_model: string
           disabled_models: Json
           id: number
+          subscriptions_api_enabled: boolean
           system_prompt: string
           updated_at: string
         }
@@ -78,6 +79,7 @@ export type Database = {
           default_model?: string
           disabled_models?: Json
           id?: number
+          subscriptions_api_enabled?: boolean
           system_prompt?: string
           updated_at?: string
         }
@@ -90,6 +92,7 @@ export type Database = {
           default_model?: string
           disabled_models?: Json
           id?: number
+          subscriptions_api_enabled?: boolean
           system_prompt?: string
           updated_at?: string
         }

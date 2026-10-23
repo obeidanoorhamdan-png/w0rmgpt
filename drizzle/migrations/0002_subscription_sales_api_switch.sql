@@ -1,0 +1,2 @@
+ALTER TABLE public.app_settings ADD COLUMN IF NOT EXISTS subscriptions_api_enabled boolean NOT NULL DEFAULT false;
+COMMENT ON COLUMN public.app_settings.subscriptions_api_enabled IS 'Server-only switch for authenticated subscription sales-site API access';

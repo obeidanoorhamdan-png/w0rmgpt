@@ -15,6 +15,13 @@
       "when": 1792665296445,
       "tag": "0001_image_gallery_and_ai_service_state",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1792755847796,
+      "tag": "0002_subscription_sales_api_switch",
+      "breakpoints": true
     }
   ]
 }

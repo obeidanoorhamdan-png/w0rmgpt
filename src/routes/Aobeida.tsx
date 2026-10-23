@@ -4,6 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { Lock, Users, MessageSquare, Crown, Flame, Loader2, Copy } from "lucide-react";
 import { WormLogo } from "@/components/WormLogo";
+import { SubscriptionIntegration } from "@/components/SubscriptionIntegration";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -185,6 +186,7 @@ function Admin() {
           </TabsContent>
 
           <TabsContent value="subs" className="space-y-4">
+            <SubscriptionIntegration enabled={data.settings.subscriptions_api_enabled} configured={data.settings.subscriptions_key_configured} onToggle={(enabled) => run(() => save({ data: { token, patch: { subscriptions_api_enabled: enabled } } }), enabled ? "تم تفعيل الربط" : "تم حذف الربط")} />
             <div className="glass space-y-3 rounded-xl border p-4">
               <h3 className="font-bold">إنشاء كود اشتراك / هدية</h3>
               <div className="flex flex-wrap items-end gap-2">

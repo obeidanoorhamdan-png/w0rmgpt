@@ -8,7 +8,8 @@ import {
   Scripts,
   type ErrorComponentProps,
 } from "@tanstack/react-router";
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
+import { LoadingScreen } from "@/components/LoadingScreen";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
@@ -114,6 +115,8 @@ function RootShell({ children }: { children: ReactNode }) {
 }
 
 function RootComponent() {
+  const [ready, setReady] = useState(false);
+  useEffect(() => { setReady(true); }, []);
   const { queryClient } = Route.useRouteContext();
   const router = useRouter();
 
@@ -128,7 +131,7 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <Outlet />
+      {ready ? <Outlet /> : <LoadingScreen />}
       <Toaster theme="dark" position="top-center" />
     </QueryClientProvider>
   );

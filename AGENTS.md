@@ -15,3 +15,5 @@
 - Images and live voice use authenticated server-owned Lovable AI Gateway calls independently of the existing custom text service; private keys never enter the browser.
 - Live calls retain the bundled persistent relay and media hook lifecycle so Stop, heartbeat expiry, and navigation release billable sessions.
 - Generated images belong to their authenticated owner; AI service denial state is stored server-only to prevent retrying blocked services across restarts.
+- The external subscription sales API lives under /api/public/subscriptions, validates an independent server secret and the persisted enable switch before privileged code CRUD; it never returns user data.
+- Use the shared LoadingScreen for initial hydration and router pending states so loading branding stays consistent.

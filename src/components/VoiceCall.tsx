@@ -23,7 +23,11 @@ export function VoiceCall() {
       const text = event.delta;
       setCaptions(previous => {
         const rows = [...previous];
-        const index = rows.findLastIndex(row => row.role === role && start <= row.end + 1000 && end >= row.start);
+        let index = -1;
+        for (let i = rows.length - 1; i >= 0; i--) {
+          const row = rows[i];
+          if (row && row.role === role && start <= row.end + 1000 && end >= row.start) { index = i; break; }
+        }
         if (index >= 0) { const row = rows[index]; if (row) rows[index] = { ...row, text: row.text + text, end: Math.max(end, row.end) }; }
         else rows.push({ role, text, start, end });
         return rows.sort((a, b) => a.start - b.start);

@@ -2,7 +2,7 @@ import { createFileRoute, Link, Outlet, redirect, useNavigate, useParams } from 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
-import { Plus, Search, MessageSquare, Pin, Trash2, Crown, User, LogOut, Menu, Coins, Copy, MoreHorizontal, Megaphone } from "lucide-react";
+import { Plus, Search, MessageSquare, Pin, Trash2, Crown, User, LogOut, Menu, Coins, Copy, MoreHorizontal, Megaphone, Images, AudioLines } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { WormLogo } from "@/components/WormLogo";
 import { Button } from "@/components/ui/button";
@@ -58,6 +58,12 @@ function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
           <Input className="h-9 ps-9" placeholder="ابحث في المحادثات…" value={q} onChange={(e) => setQ(e.target.value)} />
         </div>
       </div>
+      <nav aria-label="أدوات WORM GPT" className="mt-4 space-y-1 border-y border-sidebar-border px-3 py-3">
+        <Button asChild variant="ghost" className="w-full justify-start"><Link to="/chat" onClick={onNavigate} activeProps={{ className: "bg-sidebar-accent text-primary" }}><MessageSquare className="size-4" /> الدردشة</Link></Button>
+        <Button asChild variant="ghost" className="w-full justify-start"><Link to="/images" onClick={onNavigate} activeProps={{ className: "bg-sidebar-accent text-primary" }}><Images className="size-4 text-violet" /> استوديو الصور</Link></Button>
+        <Button asChild variant="ghost" className="w-full justify-start"><Link to="/voice" onClick={onNavigate} activeProps={{ className: "bg-sidebar-accent text-primary" }}><AudioLines className="size-4 text-primary" /> محادثة صوتية</Link></Button>
+      </nav>
+      <div className="flex items-center justify-between px-4 pt-4 text-xs text-muted-foreground"><span>المحادثات</span><span>{threads.length}</span></div>
       <div className="mt-3 flex-1 space-y-0.5 overflow-y-auto px-2">
         {filtered.length === 0 && <p className="p-4 text-center text-xs text-muted-foreground">لا توجد محادثات</p>}
         {filtered.map((t) => (
@@ -90,9 +96,9 @@ function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
             )}
             <div className="mt-2 flex items-center justify-between text-xs text-muted-foreground">
               <span>خطة {PLAN_LABEL[unlimited ? profile.plan : "free"]}</span>
-              <button className="flex items-center gap-1 font-mono hover:text-primary" onClick={() => { navigator.clipboard.writeText(profile.short_id); toast.success("تم نسخ المعرّف"); }}>
+               <Button variant="ghost" size="sm" className="h-auto gap-1 p-0 font-mono text-xs hover:text-primary" onClick={() => { navigator.clipboard.writeText(profile.short_id); toast.success("تم نسخ المعرّف"); }}>
                 ID: {profile.short_id} <Copy className="size-3" />
-              </button>
+               </Button>
             </div>
           </div>
           <div className="grid grid-cols-3 gap-1">
@@ -110,7 +116,7 @@ function Shell() {
   const [open, setOpen] = useState(false);
   const { data: info } = useQuery(appInfoQuery);
   return (
-    <div className="flex h-screen overflow-hidden bg-background">
+     <div className="flex h-dvh overflow-hidden bg-background">
       <aside className="hidden w-80 shrink-0 border-e border-sidebar-border md:block"><Sidebar /></aside>
       <Sheet open={open} onOpenChange={setOpen}>
         <SheetContent side="right" className="w-80 p-0"><Sidebar onNavigate={() => setOpen(false)} /></SheetContent>

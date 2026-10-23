@@ -35,6 +35,7 @@ export function ChatView({ threadId }: { threadId: string | null }) {
   }, [info, model]);
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: "smooth" }); }, [msgs.length, partial, pendingUser]);
   useEffect(() => { taRef.current?.focus(); }, [threadId, streaming]);
+  useEffect(() => () => abortRef.current?.abort(), []);
 
   async function run(tid: string, opts: { content?: string; regenerate?: boolean }) {
     const { data: sess } = await supabase.auth.getSession();
@@ -97,7 +98,8 @@ export function ChatView({ threadId }: { threadId: string | null }) {
     setInput("");
     if (!threadId) {
       const { data: u } = await supabase.auth.getUser();
-      const { data, error } = await supabase.from("threads").insert({ user_id: u.user!.id, model }).select().single();
+      if (!u.user) { toast.error("انتهت الجلسة، سجّل الدخول مجدداً"); return; }
+      const { data, error } = await supabase.from("threads").insert({ user_id: u.user.id, model }).select().single();
       if (error || !data) { toast.error("تعذّر إنشاء المحادثة"); return; }
       sessionStorage.setItem(`worm_pending_${data.id}`, content);
       await qc.invalidateQueries({ queryKey: ["threads"] });
@@ -141,7 +143,7 @@ export function ChatView({ threadId }: { threadId: string | null }) {
             </div>
             <div className="grid w-full max-w-xl gap-2 sm:grid-cols-2">
               {SUGGESTIONS.map((s) => (
-                <button key={s} onClick={() => send(s)} className="glass rounded-xl border p-3 text-start text-sm transition hover:border-primary hover:shadow-glow">{s}</button>
+                <Button variant="outline" key={s} onClick={() => send(s)} className="h-auto min-h-14 justify-start whitespace-normal rounded-lg p-3 text-start text-sm">{s}</Button>
               ))}
             </div>
           </div>
@@ -149,7 +151,7 @@ export function ChatView({ threadId }: { threadId: string | null }) {
           <div className="mx-auto max-w-3xl space-y-6 p-4">
             {msgs.map((m, i) => (
               <Bubble key={m.id} role={m.role} content={m.content}
-                onRegen={m.role === "assistant" && i === msgs.length - 1 && !streaming ? () => { void run(threadId!, { regenerate: true }); } : undefined} />
+                onRegen={m.role === "assistant" && i === msgs.length - 1 && !streaming && threadId ? () => { void run(threadId, { regenerate: true }); } : undefined} />
             ))}
             {pendingUser && <Bubble role="user" content={pendingUser} />}
             {streaming && (partial ? <Bubble role="assistant" content={partial} /> : (
@@ -193,9 +195,9 @@ function Bubble({ role, content, onRegen }: { role: string; content: string; onR
       </div>
     );
   return (
-    <div className="group">
+    <div className="group min-w-0">
       <div className="prose-worm"><ReactMarkdown remarkPlugins={[remarkGfm]}>{content}</ReactMarkdown></div>
-      <div className="mt-1 flex gap-1 opacity-0 transition group-hover:opacity-100">
+      <div className="mt-1 flex gap-1 opacity-70 transition group-hover:opacity-100">
         <Button variant="ghost" size="icon" className="size-7" onClick={() => { navigator.clipboard.writeText(content); toast.success("تم النسخ"); }} aria-label="نسخ"><Copy className="size-3.5" /></Button>
         {onRegen && <Button variant="ghost" size="icon" className="size-7" onClick={onRegen} aria-label="إعادة التوليد"><RefreshCw className="size-3.5" /></Button>}
       </div>

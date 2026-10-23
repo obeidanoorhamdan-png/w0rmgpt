@@ -1,0 +1,52 @@
+name: Build Lovable Android APK
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Install Dependencies
+        run: |
+          npm install --legacy-peer-deps
+
+      - name: Build Web Assets
+        run: |
+          npm run build
+
+      - name: Setup Capacitor for Lovable
+        run: |
+          npm install @capacitor/core @capacitor/cli @capacitor/android
+          npx cap init "ObeidaApp" "com.obeida.app" --web-dir dist || true
+          npx cap add android || true
+          npx cap sync android
+
+      - name: Build APK with Gradle
+        run: |
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleDebug
+
+      - name: Upload APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Lovable-App-APK
+          path: android/app/build/outputs/apk/debug/app-debug.apk

@@ -40,6 +40,8 @@ export const adminOverview = createServerFn({ method: "POST" })
         system_prompt: s.system_prompt, api_url: s.api_url, key_source: s.api_key_override ? "مفتاح مخصص من اللوحة" : "المفتاح الآمن الافتراضي",
         key_masked: maskKey(key), disabled_models: (s.disabled_models as string[]) ?? [], default_model: s.default_model,
         announcement: s.announcement ?? "", daily_credits: s.daily_credits,
+        subscriptions_api_enabled: s.subscriptions_api_enabled,
+        subscriptions_key_configured: Boolean(process.env["SUBSCRIPTIONS_API_KEY"]),
       },
       stats: { users: userCount ?? 0, messages: msgCount ?? 0, subs, topModel },
       users: users ?? [], codes: codes ?? [], logs: logs ?? [], models,
@@ -52,7 +54,7 @@ async function log(action: string, details: string) {
 }
 
 export const adminSaveSettings = createServerFn({ method: "POST" })
-  .inputValidator((d: T & { patch: { system_prompt?: string; api_url?: string; api_key?: string; disabled_models?: string[]; default_model?: string; announcement?: string; daily_credits?: number } }) => d)
+  .inputValidator((d: T & { patch: { system_prompt?: string; api_url?: string; api_key?: string; disabled_models?: string[]; default_model?: string; announcement?: string; daily_credits?: number; subscriptions_api_enabled?: boolean } }) => d)
   .handler(async ({ data }) => {
     const { verifyAdminToken, getAdmin } = await import("./admin.server");
     await verifyAdminToken(data.token);
@@ -67,6 +69,7 @@ export const adminSaveSettings = createServerFn({ method: "POST" })
     if (p.disabled_models) upd.disabled_models = p.disabled_models;
     if (p.default_model) upd.default_model = p.default_model;
     if (p.announcement !== undefined) upd.announcement = p.announcement || null;
+    if (p.subscriptions_api_enabled !== undefined) upd.subscriptions_api_enabled = p.subscriptions_api_enabled === true;
     if (p.daily_credits !== undefined) upd.daily_credits = Math.max(0, Math.min(100000, Math.floor(p.daily_credits)));
     const { error } = await (await getAdmin()).from("app_settings").update(upd).eq("id", 1);
     if (error) throw new Error(error.message);

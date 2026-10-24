@@ -31,7 +31,10 @@ export function ChatView({ threadId }: { threadId: string | null }) {
   const started = useRef<string | null>(null);
 
   useEffect(() => {
-    if (!model && info) setModel(localStorage.getItem("worm_model") || info.defaultModel);
+    if (!info) return;
+    const cached = localStorage.getItem("worm_model");
+    const valid = cached && info.models.some((m) => m.id === cached) ? cached : info.defaultModel;
+    if (model !== valid) setModel(valid);
   }, [info, model]);
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: "smooth" }); }, [msgs.length, partial, pendingUser]);
   useEffect(() => { taRef.current?.focus(); }, [threadId, streaming]);

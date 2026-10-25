@@ -107,6 +107,13 @@ function Admin() {
     catch (e) { toast.error(e instanceof Error ? e.message : "خطأ"); return undefined; }
   }
 
+  async function doInspect(code?: string) {
+    const q = (code ?? inspectQuery).trim();
+    if (!q) return;
+    try { setInspection(await inspectCode({ data: { token: token!, code: q } })); }
+    catch (e) { setInspection(null); toast.error(e instanceof Error ? e.message : "خطأ"); }
+  }
+
   if (!token || !data) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-hero p-6">

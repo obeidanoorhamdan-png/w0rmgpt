@@ -17,15 +17,17 @@ jobs:
         with:
           node-version: 20
 
-      - name: Install Dependencies
+      - name: Install & Build Web Assets
         run: |
           npm install
-          npm install @capacitor/core @capacitor/cli @capacitor/android
           npm run build
+          mkdir -p www
+          cp -r .output/public/* www/ || true
 
-      - name: Init Capacitor & Sync Android
+      - name: Install & Run Capacitor
         run: |
-          npx cap init W0rmGPT com.w0rmgpt.app --web-dir .output/public
+          npm install @capacitor/core @capacitor/cli @capacitor/android
+          npx cap init W0rmGPT com.w0rmgpt.app --web-dir www
           npx cap add android || true
           npx cap sync android
 
@@ -39,7 +41,7 @@ jobs:
         run: |
           cd android
           chmod +x gradlew
-          ./gradlew assembleDebug --stacktrace
+          ./gradlew assembleDebug --no-daemon
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4

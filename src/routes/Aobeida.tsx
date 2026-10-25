@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { Lock, Users, MessageSquare, Crown, Flame, Loader2, Copy } from "lucide-react";
+import { Lock, Users, MessageSquare, Crown, Flame, Loader2, Copy, SearchCheck, Trash2 } from "lucide-react";
 import { WormLogo } from "@/components/WormLogo";
 import { SubscriptionIntegration } from "@/components/SubscriptionIntegration";
 import { Button } from "@/components/ui/button";
@@ -10,7 +10,9 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { adminLogin, adminOverview, adminSaveSettings, adminChangePassword, adminCreateCode, adminUpdateUser } from "@/lib/admin.functions";
+import { adminLogin, adminOverview, adminSaveSettings, adminChangePassword, adminCreateCode, adminUpdateUser, adminCreateSellerKey, adminToggleSellerKey, adminDeleteSellerKey, adminDeleteCodes, adminInspectCode } from "@/lib/admin.functions";
+
+type CodeInspection = Awaited<ReturnType<typeof adminInspectCode>>;
 
 export const Route = createFileRoute("/Aobeida")({
   head: () => ({

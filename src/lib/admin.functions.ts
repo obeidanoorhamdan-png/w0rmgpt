@@ -22,19 +22,22 @@ export const adminOverview = createServerFn({ method: "POST" })
     const key = resolveKey(s.api_key_override);
     let q = db.from("profiles").select("*").order("created_at", { ascending: false }).limit(100);
     if (data.search) q = q.or(`email.ilike.%${data.search.replace(/[%,()]/g, "")}%,short_id.ilike.%${data.search.replace(/[%,()]/g, "")}%`);
-    const [{ data: users }, { count: userCount }, { count: msgCount }, { data: codes }, { data: logs }, { data: modelRows }, models] = await Promise.all([
+    const [{ data: users }, { count: userCount }, { count: msgCount }, { data: codes }, { data: logs }, { data: modelRows }, { data: sellerKeys }, models] = await Promise.all([
       q,
       db.from("profiles").select("*", { count: "exact", head: true }),
       db.from("messages").select("*", { count: "exact", head: true }),
-      db.from("gift_codes").select("*").order("created_at", { ascending: false }).limit(50),
+      db.from("gift_codes").select("*").order("created_at", { ascending: false }).limit(200),
       db.from("admin_log").select("*").order("created_at", { ascending: false }).limit(30),
       db.from("messages").select("model").eq("role", "assistant").order("created_at", { ascending: false }).limit(1000),
+      db.from("seller_api_keys").select("*").order("created_at", { ascending: false }),
       fetchModels(s.api_url, key),
     ]);
     const usage: Record<string, number> = {};
     for (const r of modelRows ?? []) if (r.model) usage[r.model] = (usage[r.model] ?? 0) + 1;
     const topModel = Object.entries(usage).sort((a, b) => b[1] - a[1])[0]?.[0] ?? "—";
     const subs = (users ?? []).filter((u) => u.plan !== "free" && u.plan_expires_at && new Date(u.plan_expires_at) > new Date()).length;
+    const codeCounts: Record<string, number> = {};
+    for (const c of codes ?? []) if (c.created_by_key_id) codeCounts[c.created_by_key_id] = (codeCounts[c.created_by_key_id] ?? 0) + 1;
     return {
       settings: {
         system_prompt: s.system_prompt, api_url: s.api_url, key_source: s.api_key_override ? "مفتاح مخصص من اللوحة" : "المفتاح الآمن الافتراضي",
@@ -45,6 +48,11 @@ export const adminOverview = createServerFn({ method: "POST" })
       },
       stats: { users: userCount ?? 0, messages: msgCount ?? 0, subs, topModel },
       users: users ?? [], codes: codes ?? [], logs: logs ?? [], models,
+      seller_keys: (sellerKeys ?? []).map((k) => ({
+        id: k.id, name: k.name, active: k.active, created_at: k.created_at,
+        key_masked: `••••${k.key_hash.slice(-6)}`,
+        codes_created: codeCounts[k.id] ?? 0,
+      })),
     };
   });
 

@@ -134,6 +134,7 @@ export type Database = {
         Row: {
           code: string
           created_at: string
+          created_by_key_id: string | null
           days: number
           max_uses: number
           plan: string
@@ -142,6 +143,7 @@ export type Database = {
         Insert: {
           code: string
           created_at?: string
+          created_by_key_id?: string | null
           days?: number
           max_uses?: number
           plan: string
@@ -150,12 +152,21 @@ export type Database = {
         Update: {
           code?: string
           created_at?: string
+          created_by_key_id?: string | null
           days?: number
           max_uses?: number
           plan?: string
           uses?: number
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "gift_codes_created_by_key_id_fkey"
+            columns: ["created_by_key_id"]
+            isOneToOne: false
+            referencedRelation: "seller_api_keys"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       messages: {
         Row: {
@@ -264,6 +275,30 @@ export type Database = {
           code?: string
           created_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      seller_api_keys: {
+        Row: {
+          active: boolean
+          created_at: string
+          id: string
+          key_hash: string
+          name: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          key_hash: string
+          name: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          key_hash?: string
+          name?: string
         }
         Relationships: []
       }

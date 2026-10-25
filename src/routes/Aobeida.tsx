@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { Lock, Users, MessageSquare, Crown, Flame, Loader2, Copy } from "lucide-react";
+import { Lock, Users, MessageSquare, Crown, Flame, Loader2, Copy, SearchCheck, Trash2 } from "lucide-react";
 import { WormLogo } from "@/components/WormLogo";
 import { SubscriptionIntegration } from "@/components/SubscriptionIntegration";
 import { Button } from "@/components/ui/button";
@@ -10,7 +10,9 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { adminLogin, adminOverview, adminSaveSettings, adminChangePassword, adminCreateCode, adminUpdateUser } from "@/lib/admin.functions";
+import { adminLogin, adminOverview, adminSaveSettings, adminChangePassword, adminCreateCode, adminUpdateUser, adminCreateSellerKey, adminToggleSellerKey, adminDeleteSellerKey, adminDeleteCodes, adminInspectCode } from "@/lib/admin.functions";
+
+type CodeInspection = Awaited<ReturnType<typeof adminInspectCode>>;
 
 export const Route = createFileRoute("/Aobeida")({
   head: () => ({
@@ -36,6 +38,11 @@ function Admin() {
   const changePw = useServerFn(adminChangePassword);
   const createCode = useServerFn(adminCreateCode);
   const updateUser = useServerFn(adminUpdateUser);
+  const createSellerKey = useServerFn(adminCreateSellerKey);
+  const toggleSellerKey = useServerFn(adminToggleSellerKey);
+  const deleteSellerKey = useServerFn(adminDeleteSellerKey);
+  const deleteCodes = useServerFn(adminDeleteCodes);
+  const inspectCode = useServerFn(adminInspectCode);
 
   const [token, setToken] = useState<string | null>(null);
   const [pw, setPw] = useState("");
@@ -54,6 +61,9 @@ function Admin() {
   const [cPlan, setCPlan] = useState("plus");
   const [cDays, setCDays] = useState(30);
   const [cUses, setCUses] = useState(1);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [inspectQuery, setInspectQuery] = useState("");
+  const [inspection, setInspection] = useState<CodeInspection | null>(null);
 
   const load = useCallback(async (t: string, s?: string) => {
     try {
@@ -95,6 +105,13 @@ function Admin() {
   async function run<T>(fn: () => Promise<T>, ok: string) {
     try { const r = await fn(); toast.success(ok); if (token) await load(token, search); return r; }
     catch (e) { toast.error(e instanceof Error ? e.message : "خطأ"); return undefined; }
+  }
+
+  async function doInspect(code?: string) {
+    const q = (code ?? inspectQuery).trim();
+    if (!q) return;
+    try { setInspection(await inspectCode({ data: { token: token!, code: q } })); }
+    catch (e) { setInspection(null); toast.error(e instanceof Error ? e.message : "خطأ"); }
   }
 
   if (!token || !data) {
@@ -186,7 +203,15 @@ function Admin() {
           </TabsContent>
 
           <TabsContent value="subs" className="space-y-4">
-            <SubscriptionIntegration enabled={data.settings.subscriptions_api_enabled} configured={data.settings.subscriptions_key_configured} onToggle={(enabled) => run(() => save({ data: { token, patch: { subscriptions_api_enabled: enabled } } }), enabled ? "تم تفعيل الربط" : "تم حذف الربط")} />
+            <SubscriptionIntegration
+              enabled={data.settings.subscriptions_api_enabled}
+              configured={data.settings.subscriptions_key_configured}
+              sellerKeys={data.seller_keys}
+              onToggle={(enabled) => run(() => save({ data: { token, patch: { subscriptions_api_enabled: enabled } } }), enabled ? "تم تفعيل الربط" : "تم حذف الربط")}
+              onCreateKey={async (name) => { const r = await run(() => createSellerKey({ data: { token, name } }), "تم إنشاء المفتاح"); return r?.key; }}
+              onToggleKey={(id, active) => run(() => toggleSellerKey({ data: { token, id, active } }), active ? "تم تفعيل المفتاح" : "تم تعطيل المفتاح")}
+              onDeleteKey={(id) => run(() => deleteSellerKey({ data: { token, id } }), "تم حذف المفتاح")}
+            />
             <div className="glass space-y-3 rounded-xl border p-4">
               <h3 className="font-bold">إنشاء كود اشتراك / هدية</h3>
               <div className="flex flex-wrap items-end gap-2">
@@ -200,14 +225,52 @@ function Admin() {
                 <Button className="bg-fire text-primary-foreground" onClick={async () => { const r = await run(() => createCode({ data: { token, plan: cPlan, days: cDays, max_uses: cUses } }), "تم إنشاء الكود"); if (r) navigator.clipboard.writeText(r.code); }}>إنشاء</Button>
               </div>
             </div>
+            <div className="glass space-y-3 rounded-xl border p-4">
+              <h3 className="flex items-center gap-2 font-bold"><SearchCheck className="size-5 text-primary" /> فحص كود</h3>
+              <div className="flex gap-2">
+                <Input dir="ltr" className="text-left font-mono" placeholder="WORM-XXXX" value={inspectQuery} onChange={(e) => setInspectQuery(e.target.value)} onKeyDown={(e) => e.key === "Enter" && void doInspect()} />
+                <Button variant="outline" onClick={() => void doInspect()}>فحص</Button>
+              </div>
+              {inspection && (
+                <div className="space-y-1 rounded-md border bg-muted/40 p-3 text-sm">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <span className="font-mono font-bold" dir="ltr">{inspection.code}</span>
+                    <span className={`rounded-full px-2 py-0.5 text-xs font-bold ${inspection.exhausted ? "bg-destructive/15 text-destructive" : "bg-primary/15 text-primary"}`}>{inspection.exhausted ? "مستنفد" : "صالح"}</span>
+                  </div>
+                  <p>الخطة: {inspection.plan} · المدة: {inspection.days} يوم · أنشئ بواسطة: {inspection.created_by}</p>
+                  <p>الاستخدامات: {inspection.uses}/{inspection.max_uses} · المتبقي: {inspection.remaining}</p>
+                  {inspection.redeemed_by.length > 0 ? (
+                    <div className="pt-1">
+                      <p className="text-xs font-bold text-muted-foreground">استخدمه:</p>
+                      {inspection.redeemed_by.map((r, i) => <p key={i} className="text-xs" dir="ltr">{r.email} — {new Date(r.at).toLocaleString("ar")}</p>)}
+                    </div>
+                  ) : <p className="text-xs text-muted-foreground">لم يستخدمه أحد بعد</p>}
+                </div>
+              )}
+            </div>
             <div className="glass rounded-xl border p-4">
-              <h3 className="mb-2 font-bold">الأكواد</h3>
+              <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                <h3 className="font-bold">الأكواد ({data.codes.length})</h3>
+                <div className="flex gap-2">
+                  <Button size="sm" variant="outline" disabled={selected.size === 0} onClick={() => { if (window.confirm(`حذف ${selected.size} كود محدد؟`)) void run(async () => { await deleteCodes({ data: { token, codes: [...selected] } }); setSelected(new Set()); }, "تم حذف الأكواد المحددة"); }}><Trash2 className="size-4" /> حذف المحدد ({selected.size})</Button>
+                  <Button size="sm" variant="destructive" disabled={data.codes.length === 0} onClick={() => { if (window.confirm("حذف جميع الأكواد نهائياً؟ لا يمكن التراجع.")) void run(async () => { await deleteCodes({ data: { token, all: true } }); setSelected(new Set()); }, "تم حذف جميع الأكواد"); }}>حذف الكل</Button>
+                </div>
+              </div>
+              <label className="mb-2 flex items-center gap-2 text-xs text-muted-foreground">
+                <input type="checkbox" checked={data.codes.length > 0 && selected.size === data.codes.length} onChange={(e) => setSelected(e.target.checked ? new Set(data.codes.map((c) => c.code)) : new Set())} /> تحديد الكل
+              </label>
               <div className="divide-y text-sm">
                 {data.codes.length === 0 && <p className="text-muted-foreground">لا توجد أكواد</p>}
                 {data.codes.map((c) => (
                   <div key={c.code} className="flex items-center justify-between gap-2 py-2">
-                    <button className="flex items-center gap-1 font-mono" onClick={() => { navigator.clipboard.writeText(c.code); toast.success("تم النسخ"); }}>{c.code} <Copy className="size-3" /></button>
-                    <span className="text-xs text-muted-foreground">{c.plan} · {c.days} يوم · {c.uses}/{c.max_uses}</span>
+                    <label className="flex min-w-0 items-center gap-2">
+                      <input type="checkbox" checked={selected.has(c.code)} onChange={(e) => { const next = new Set(selected); if (e.target.checked) next.add(c.code); else next.delete(c.code); setSelected(next); }} />
+                      <button className="flex items-center gap-1 font-mono" onClick={() => { navigator.clipboard.writeText(c.code); toast.success("تم النسخ"); }}>{c.code} <Copy className="size-3" /></button>
+                    </label>
+                    <span className="flex items-center gap-2 text-xs text-muted-foreground">
+                      {c.plan} · {c.days} يوم · {c.uses}/{c.max_uses}
+                      <button className="text-primary underline" onClick={() => { setInspectQuery(c.code); void doInspect(c.code); }}>فحص</button>
+                    </span>
                   </div>
                 ))}
               </div>

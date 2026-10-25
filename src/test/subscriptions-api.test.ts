@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { subscriptionCreateSchema, subscriptionUpdateSchema, validSalesKey } from "@/lib/subscriptions-api";
+import { generateSellerKey, sha256Hex, subscriptionCreateSchema, subscriptionUpdateSchema, validSalesKey } from "@/lib/subscriptions-api";
 
 describe("Sales-site subscriptions", () => {
   it("allows subscription creation for Plus, Pro and Ultra", () => {
@@ -14,5 +14,12 @@ describe("Sales-site subscriptions", () => {
     expect(await validSalesKey("test-sales-key", "test-sales-key")).toBe(true);
     expect(await validSalesKey("wrong-key", "test-sales-key")).toBe(false);
     expect(await validSalesKey("test-sales-key", undefined)).toBe(false);
+  });
+  it("generates prefixed seller keys with stable hashes", async () => {
+    const key = generateSellerKey();
+    expect(key.startsWith("wsk_")).toBe(true);
+    expect(key.length).toBeGreaterThan(20);
+    expect(await sha256Hex(key)).toBe(await sha256Hex(key));
+    expect(await sha256Hex(key)).not.toBe(await sha256Hex(generateSellerKey()));
   });
 });

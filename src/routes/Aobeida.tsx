@@ -38,6 +38,11 @@ function Admin() {
   const changePw = useServerFn(adminChangePassword);
   const createCode = useServerFn(adminCreateCode);
   const updateUser = useServerFn(adminUpdateUser);
+  const createSellerKey = useServerFn(adminCreateSellerKey);
+  const toggleSellerKey = useServerFn(adminToggleSellerKey);
+  const deleteSellerKey = useServerFn(adminDeleteSellerKey);
+  const deleteCodes = useServerFn(adminDeleteCodes);
+  const inspectCode = useServerFn(adminInspectCode);
 
   const [token, setToken] = useState<string | null>(null);
   const [pw, setPw] = useState("");
@@ -56,6 +61,9 @@ function Admin() {
   const [cPlan, setCPlan] = useState("plus");
   const [cDays, setCDays] = useState(30);
   const [cUses, setCUses] = useState(1);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [inspectQuery, setInspectQuery] = useState("");
+  const [inspection, setInspection] = useState<CodeInspection | null>(null);
 
   const load = useCallback(async (t: string, s?: string) => {
     try {

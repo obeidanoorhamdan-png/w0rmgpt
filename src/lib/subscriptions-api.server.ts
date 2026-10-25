@@ -1,14 +1,30 @@
-import { subscriptionCodeSchema, subscriptionCreateSchema, subscriptionUpdateSchema, validSalesKey } from "./subscriptions-api";
+import { sha256Hex, subscriptionCodeSchema, subscriptionCreateSchema, subscriptionUpdateSchema, validSalesKey } from "./subscriptions-api";
 
 export async function handleSubscriptions(request: Request, secret: string | undefined) {
   const headers = { "Cache-Control": "no-store" };
   const reply = (body: unknown, status = 200) => Response.json(body, { status, headers });
   const supplied = request.headers.get("Authorization")?.replace(/^Bearer /, "") ?? "";
-  if (!await validSalesKey(supplied, secret)) return reply({ error: "Unauthorized" }, 401);
   const { getAdmin, getSettings } = await import("./admin.server");
+  const db = await getAdmin();
+
+  // Master key from env, or any active seller key created in the admin panel.
+  let sellerKeyId: string | null = null;
+  if (await validSalesKey(supplied, secret)) {
+    sellerKeyId = null; // master key: tracked as admin-created
+  } else if (supplied) {
+    const { data: sellerKey } = await db
+      .from("seller_api_keys")
+      .select("id, active")
+      .eq("key_hash", await sha256Hex(supplied))
+      .maybeSingle();
+    if (!sellerKey || !sellerKey.active) return reply({ error: "Unauthorized" }, 401);
+    sellerKeyId = sellerKey.id;
+  } else {
+    return reply({ error: "Unauthorized" }, 401);
+  }
+
   const settings = await getSettings();
   if (!settings.subscriptions_api_enabled) return reply({ error: "Integration disabled" }, 403);
-  const db = await getAdmin();
   const rawCode = new URL(request.url).searchParams.get("code");
   const codeResult = rawCode === null ? null : subscriptionCodeSchema.safeParse(rawCode);
   if (codeResult && !codeResult.success) return reply({ error: "Invalid code" }, 400);
@@ -25,7 +41,7 @@ export async function handleSubscriptions(request: Request, secret: string | und
     if (request.method === "POST") {
       const parsed = subscriptionCreateSchema.safeParse(await request.json());
       if (!parsed.success) return reply({ error: "Invalid subscription fields" }, 400);
-      const value = { ...parsed.data, code: parsed.data.code ?? `WORM-${crypto.randomUUID().replace(/-/g, "").slice(0, 10).toUpperCase()}` };
+      const value = { ...parsed.data, code: parsed.data.code ?? `WORM-${crypto.randomUUID().replace(/-/g, "").slice(0, 10).toUpperCase()}`, created_by_key_id: sellerKeyId };
       const { data, error } = await db.from("gift_codes").insert(value).select("code,plan,days,max_uses,uses,created_at").single();
       if (error) return reply({ error: error.code === "23505" ? "Code already exists" : "Create failed" }, error.code === "23505" ? 409 : 500);
       await db.from("admin_log").insert({ action: "API إنشاء كود", details: value.code });

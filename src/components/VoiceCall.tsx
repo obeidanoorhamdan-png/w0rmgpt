@@ -42,7 +42,7 @@ export function VoiceCall() {
   const canStart = voice.status === "idle" || voice.status === "closed";
   const labels = { idle: "جاهز للمحادثة", connecting: "جارٍ الاتصال…", connected: "متصل الآن", stopping: "جارٍ إنهاء المكالمة…", closed: "انتهت المكالمة" };
   return <div className="flex h-full flex-col overflow-y-auto px-5 py-8">
-    <header className="mx-auto w-full max-w-3xl"><h1 className="flex items-center gap-2 text-xl font-bold"><AudioLines className="size-6 text-primary" /> المحادثة الصوتية</h1><p className="mt-1 text-sm text-muted-foreground" dir="ltr">WORM GPT · GPT Live</p></header>
+    <header className="mx-auto flex w-full max-w-3xl items-center justify-between gap-3 border-b pb-6"><div><span className="text-xs font-semibold text-primary" dir="ltr">WORM GPT / LIVE</span><h1 className="mt-2 text-3xl font-bold">المحادثة الصوتية</h1></div><AudioLines className="size-8 text-primary" /></header>
     <div className="mx-auto flex w-full max-w-3xl flex-col items-center py-12">
       <div className={`voice-emblem ${voice.status === "connected" ? "is-connected" : ""}`}><WormLogo size={112} withText={false} /></div>
       <p role="status" className="mt-8 text-lg font-semibold">{labels[voice.status]}</p>

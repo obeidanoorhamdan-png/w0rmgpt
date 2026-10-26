@@ -24,7 +24,7 @@ function CodeBlock({ children }: { children?: React.ReactNode }) {
   }}>{copied ? <Check /> : <Copy />}{copied ? "تم النسخ" : "نسخ الكود"}</Button><pre>{children}</pre></div>;
 }
 
-export function MessageBubble({ role, content, onRegen, onEdit, compact = false }: { role: string; content: string; onRegen?: () => void; onEdit?: () => void; compact?: boolean }) {
+export function MessageBubble({ role, content, onRegen, onEdit, compact = false }: { role: string; content: string; onRegen?: (() => void) | undefined; onEdit?: (() => void) | undefined; compact?: boolean }) {
   const [speaking, setSpeaking] = useState(false);
   useEffect(() => () => { if (typeof window !== "undefined" && "speechSynthesis" in window) window.speechSynthesis.cancel(); }, []);
   function speak() {

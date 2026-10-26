@@ -1,4 +1,5 @@
 # WORM GPT completion
+- [ ] Renew chat workspace, sidebar, image/voice presentation, and verify new chat tools.
 - [ ] Add subscription sales-site API, admin connection controls, and Python example.
 - [ ] Add branded loading screen.
 - [ ] Update sidebar navigation for chat, images, and voice.

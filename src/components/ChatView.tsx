@@ -48,6 +48,7 @@ export function ChatView({ threadId }: { threadId: string | null }) {
   const [draftReady, setDraftReady] = useState(false);
   const draftKey = `worm_draft_${threadId ?? "new"}`;
   const matches = findMessageMatches(msgs, search);
+  const availableModels = info?.models.length ? info.models : info?.defaultModel ? [{ id: info.defaultModel, name: info.defaultModel }] : [];
   useEffect(() => { setInput(localStorage.getItem(draftKey) ?? ""); setDraftReady(true); }, [draftKey]);
   useEffect(() => { if (draftReady) localStorage.setItem(draftKey, input); }, [input, draftKey, draftReady]);
   useEffect(() => {
@@ -157,7 +158,7 @@ export function ChatView({ threadId }: { threadId: string | null }) {
       <header className="flex min-h-16 shrink-0 items-center justify-between gap-2 border-b border-border/60 px-4 sm:px-7">
         <div className="flex min-w-0 items-center gap-3"><span className="hidden text-xs font-bold text-muted-foreground lg:block">الموديل</span><Select value={model} disabled={busy} onValueChange={(v) => { setModel(v); localStorage.setItem("worm_model", v); }}>
           <SelectTrigger className="h-9 w-56 max-w-[48vw] border-none bg-muted/40 text-xs shadow-none" dir="ltr" aria-label="اختيار الموديل"><SelectValue placeholder="جارٍ تحميل الموديلات…" /></SelectTrigger>
-          <SelectContent dir="ltr">{info?.models.map((m) => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}</SelectContent>
+          <SelectContent dir="ltr">{availableModels.map((m) => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}</SelectContent>
         </Select></div>
         <div className="flex items-center gap-0.5"><ToolButton label="بحث في المحادثة" onClick={() => setSearchOpen(!searchOpen)}><Search /></ToolButton><ToolButton label={compact ? "عرض مريح" : "عرض مكثّف"} onClick={() => setCompact(!compact)}><PanelTop /></ToolButton>{msgs.length > 0 && <DropdownMenu><DropdownMenuTrigger asChild><Button variant="ghost" size="icon" aria-label="تصدير المحادثة" className="size-8 text-muted-foreground"><Download /></Button></DropdownMenuTrigger><DropdownMenuContent><DropdownMenuItem onClick={() => exportChat("md")}>Markdown (.md)</DropdownMenuItem><DropdownMenuItem onClick={() => exportChat("json")}>JSON (.json)</DropdownMenuItem></DropdownMenuContent></DropdownMenu>}<Button asChild variant="ghost" size="icon" className="size-8" aria-label="محادثة جديدة"><Link to="/chat"><Plus /></Link></Button></div>
       </header>

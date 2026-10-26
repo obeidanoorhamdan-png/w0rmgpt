@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Download, ImagePlus, Loader2, Sparkles, Trash2 } from "lucide-react";
+import { Download, ImagePlus, Loader2, Sparkles, Trash2, ArrowUpRight, Palette, Camera, Box } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -52,7 +52,8 @@ export function ImageStudio() {
 
   return <div className="h-full overflow-y-auto">
     <div className="mx-auto max-w-5xl px-5 py-8 sm:px-8">
-      <div className="mb-8 flex items-center gap-3"><ImagePlus className="size-7 text-primary" /><div><h1 className="text-2xl font-bold">استوديو الصور</h1><p className="mt-1 text-sm text-muted-foreground" dir="ltr">WORM GPT · Sunburst</p></div></div>
+      <header className="mb-8 flex items-center justify-between gap-3 border-b pb-6"><div><span className="text-xs font-semibold text-violet" dir="ltr">WORM GPT / IMAGES</span><h1 className="mt-2 text-3xl font-bold">استوديو الصور</h1></div><ImagePlus className="size-8 text-violet" /></header>
+      <div className="mb-5 flex flex-wrap gap-2">{[{ icon: Camera, label: "تصوير واقعي", text: "صورة فوتوغرافية واقعية عالية التفاصيل لـ " }, { icon: Palette, label: "رسم إبداعي", text: "رسم فني بأسلوب رقمي بألوان متناغمة لـ " }, { icon: Box, label: "تصميم منتج", text: "تصوير منتج احترافي بإضاءة استوديو وخلفية نظيفة لـ " }].map(({ icon: Icon, label, text }) => <Button key={label} variant="outline" size="sm" disabled={busy} onClick={() => setPrompt(text)}><Icon className="text-violet" />{label}<ArrowUpRight className="text-muted-foreground" /></Button>)}</div>
       <Textarea aria-label="وصف الصورة" placeholder="ما الصورة التي تتخيلها؟" value={prompt} onChange={e => setPrompt(e.target.value)} className="min-h-32 resize-y bg-card" disabled={busy} />
       <div className="mt-3 flex flex-wrap items-center gap-3">
         <Select value={size} onValueChange={setSize} disabled={busy}><SelectTrigger className="w-40" aria-label="أبعاد الصورة"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="1024x1024">مربعة · 1:1</SelectItem><SelectItem value="1536x1024">أفقية · 3:2</SelectItem><SelectItem value="1024x1536">عمودية · 2:3</SelectItem></SelectContent></Select>
@@ -61,7 +62,7 @@ export function ImageStudio() {
       </div>
       {error && <p role="alert" className="mt-4 break-words text-sm text-destructive">{error}</p>}
       {frame && <div className="mt-8"><img src={frame} alt={prompt} className={`mx-auto max-h-[600px] max-w-full rounded-lg object-contain transition-[filter] ${final ? "blur-0" : "blur-2xl"}`} />{final && <Button variant="outline" className="mt-3" onClick={() => download(frame)}><Download className="size-4" /> تنزيل الصورة</Button>}</div>}
-      {images.length > 0 && <><h2 className="mb-4 mt-10 text-lg font-bold">صورك</h2><div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">{images.map(image => <div key={image.id} className="overflow-hidden rounded-lg border bg-card"><img src={image.image_data} alt={image.prompt} className="aspect-square w-full object-cover" loading="lazy" /><div className="p-3"><p className="line-clamp-2 min-h-10 text-sm">{image.prompt}</p><div className="mt-3 flex gap-2"><Button variant="ghost" size="icon" aria-label="تنزيل الصورة" onClick={() => download(image.image_data)}><Download className="size-4" /></Button><Button variant="ghost" size="icon" aria-label="حذف الصورة" onClick={() => remove(image.id)}><Trash2 className="size-4" /></Button></div></div></div>)}</div></>}
+      {images.length > 0 && <><div className="mb-4 mt-10 flex items-center justify-between border-b pb-3"><h2 className="text-lg font-bold">صورك</h2><span className="text-xs text-muted-foreground">{images.length} صورة</span></div><div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">{images.map(image => <div key={image.id} className="overflow-hidden rounded-lg border bg-card"><img src={image.image_data} alt={image.prompt} className="aspect-square w-full object-cover" loading="lazy" /><div className="p-3"><p className="line-clamp-2 min-h-10 text-sm">{image.prompt}</p><div className="mt-3 flex gap-2"><Button variant="ghost" size="icon" aria-label="تنزيل الصورة" onClick={() => download(image.image_data)}><Download className="size-4" /></Button><Button variant="ghost" size="icon" aria-label="حذف الصورة" onClick={() => remove(image.id)}><Trash2 className="size-4" /></Button></div></div></div>)}</div></>}
     </div>
   </div>;
 }

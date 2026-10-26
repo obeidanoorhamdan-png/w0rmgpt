@@ -1,9 +1,11 @@
 # WORM GPT completion
+- [x] Renew chat workspace, sidebar, image/voice presentation, and verify search, draft reuse, autosave, and export.
 - [ ] Add subscription sales-site API, admin connection controls, and Python example.
 - [ ] Add branded loading screen.
 - [ ] Update sidebar navigation for chat, images, and voice.
 - [x] Remove the flame above the logo.
-- [ ] Improve the sidebar and chat interface.
+- [x] Improve the sidebar and chat interface.
+- [ ] Verify an assistant reply: configured external service returns no models and rejects the configured default model.
 - [ ] Complete image generation and verify it.
 - [ ] Add professional live voice calls and verify available boundaries.
 - [ ] Resolve the previously requested API key feature from chat history.

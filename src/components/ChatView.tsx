@@ -46,6 +46,7 @@ export function ChatView({ threadId }: { threadId: string | null }) {
   const [compact, setCompact] = useState(false);
   const [creating, setCreating] = useState(false);
   const [draftReady, setDraftReady] = useState(false);
+  const [requestError, setRequestError] = useState<string | null>(null);
   const draftKey = `worm_draft_${threadId ?? "new"}`;
   const matches = findMessageMatches(msgs, search);
   const availableModels = info?.models.length ? info.models : info?.defaultModel ? [{ id: info.defaultModel, name: info.defaultModel }] : [];
@@ -72,6 +73,7 @@ export function ChatView({ threadId }: { threadId: string | null }) {
     const token = sess.session?.access_token;
     if (!token) { toast.error("انتهت الجلسة"); return; }
     stickToBottom.current = true;
+    setRequestError(null);
     setStreaming(true);
     setPartial("");
     setPendingUser(opts.content ?? null);
@@ -86,7 +88,9 @@ export function ChatView({ threadId }: { threadId: string | null }) {
       });
       if (!r.ok || !r.body) {
         const j = (await r.json().catch(() => ({}))) as { error?: string };
-        toast.error(j.error ?? "فشل الاتصال بالذكاء الاصطناعي");
+        const message = /model.*not found/i.test(j.error ?? "") ? "الموديل المحدد غير متاح لدى خدمة الدردشة. اختر موديلًا آخر أو حدّث إعدادات الخدمة في الإدارة." : j.error ?? "فشل الاتصال بالذكاء الاصطناعي";
+        setRequestError(message);
+        toast.error(message);
         return;
       }
       const reader = r.body.getReader();
@@ -99,7 +103,7 @@ export function ChatView({ threadId }: { threadId: string | null }) {
         setPartial(acc);
       }
     } catch (e) {
-      if ((e as Error).name !== "AbortError") toast.error("انقطع الاتصال");
+      if ((e as Error).name !== "AbortError") { setRequestError("انقطع الاتصال؛ يمكنك إعادة إرسال رسالتك."); toast.error("انقطع الاتصال"); }
     } finally {
       await qc.invalidateQueries({ queryKey: ["messages", tid] });
       qc.invalidateQueries({ queryKey: ["threads"] });
@@ -183,6 +187,7 @@ export function ChatView({ threadId }: { threadId: string | null }) {
       {showJump && <Button size="icon" variant="outline" className="absolute bottom-4 start-1/2 rounded-full shadow-sm" aria-label="آخر رسالة" onClick={() => { stickToBottom.current = true; bottomRef.current?.scrollIntoView({ behavior: "smooth" }); }}><ArrowDown /></Button>}
       </div>
       <footer className="shrink-0 px-4 pb-3 pt-2 sm:px-7 sm:pb-5">
+        {requestError && <div role="alert" className="mx-auto mb-3 flex max-w-3xl items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-xs leading-6 text-destructive"><span className="flex-1">{requestError}</span><ToolButton label="إغلاق التنبيه" onClick={() => setRequestError(null)}><X /></ToolButton></div>}
         <div className="chat-composer mx-auto max-w-3xl rounded-xl border bg-card p-3 transition-colors focus-within:border-primary/50">
           <Textarea ref={taRef} value={input} aria-label="رسالتك" onChange={e => setInput(e.target.value)} onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); void send(); } }} placeholder="اسأل، ابتكر، أو ابدأ بفكرة…" rows={1} className="max-h-40 min-h-12 resize-none border-0 bg-transparent px-1 text-sm shadow-none focus-visible:ring-0" />
           <div className="mt-2 flex items-center justify-between gap-2"><div className="flex items-center gap-1"><Button asChild variant="ghost" size="icon" className="size-8 text-muted-foreground" aria-label="الانتقال إلى الصور"><Link to="/images"><Images /></Link></Button><Button asChild variant="ghost" size="icon" className="size-8 text-muted-foreground" aria-label="الانتقال إلى الصوت"><Link to="/voice"><AudioLines /></Link></Button>{input && <ToolButton label="مسح المسودة" onClick={() => setInput("")}><X /></ToolButton>}<span className="hidden text-[10px] text-muted-foreground sm:block">{input.length ? `${input.length.toLocaleString("ar")} حرف` : ""}</span></div>

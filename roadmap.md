@@ -1,4 +1,6 @@
 # WORM GPT completion
+- [ ] Resize controls and adapt all interfaces for phones, tablets, and desktop; verify representative flows.
+- [ ] Connect Resend and verify supported authentication email delivery prerequisites.
 - [x] Renew chat workspace, sidebar, image/voice presentation, and verify search, draft reuse, autosave, and export.
 - [ ] Add subscription sales-site API, admin connection controls, and Python example.
 - [ ] Add branded loading screen.

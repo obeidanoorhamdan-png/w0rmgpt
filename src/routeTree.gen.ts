@@ -23,6 +23,8 @@ import { Route as ApiGenerateImageRouteImport } from './routes/api/generate-imag
 import { Route as AuthenticatedChatIndexRouteImport } from './routes/_authenticated/chat.index'
 import { Route as AuthenticatedChatThreadIdRouteImport } from './routes/_authenticated/chat.$threadId'
 import { Route as ApiPublicSubscriptionsRouteImport } from './routes/api/public/subscriptions'
+import { Route as ApiPublicTelegramTickRouteImport } from './routes/api/public/telegram/tick'
+import { Route as ApiPublicTelegramWebhookRouteImport } from './routes/api/public/telegram/webhook'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -94,6 +96,17 @@ const ApiPublicSubscriptionsRoute = ApiPublicSubscriptionsRouteImport.update({
   path: '/api/public/subscriptions',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicTelegramTickRoute = ApiPublicTelegramTickRouteImport.update({
+  id: '/api/public/telegram/tick',
+  path: '/api/public/telegram/tick',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicTelegramWebhookRoute =
+  ApiPublicTelegramWebhookRouteImport.update({
+    id: '/api/public/telegram/webhook',
+    path: '/api/public/telegram/webhook',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -109,6 +122,8 @@ export interface FileRoutesByFullPath {
   '/chat/$threadId': typeof AuthenticatedChatThreadIdRoute
   '/api/public/subscriptions': typeof ApiPublicSubscriptionsRoute
   '/chat/': typeof AuthenticatedChatIndexRoute
+  '/api/public/telegram/tick': typeof ApiPublicTelegramTickRoute
+  '/api/public/telegram/webhook': typeof ApiPublicTelegramWebhookRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -124,6 +139,8 @@ export interface FileRoutesByTo {
   '/chat/$threadId': typeof AuthenticatedChatThreadIdRoute
   '/api/public/subscriptions': typeof ApiPublicSubscriptionsRoute
   '/chat': typeof AuthenticatedChatIndexRoute
+  '/api/public/telegram/tick': typeof ApiPublicTelegramTickRoute
+  '/api/public/telegram/webhook': typeof ApiPublicTelegramWebhookRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -141,6 +158,8 @@ export interface FileRoutesById {
   '/_authenticated/chat/$threadId': typeof AuthenticatedChatThreadIdRoute
   '/api/public/subscriptions': typeof ApiPublicSubscriptionsRoute
   '/_authenticated/chat/': typeof AuthenticatedChatIndexRoute
+  '/api/public/telegram/tick': typeof ApiPublicTelegramTickRoute
+  '/api/public/telegram/webhook': typeof ApiPublicTelegramWebhookRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -158,6 +177,8 @@ export interface FileRouteTypes {
     | '/chat/$threadId'
     | '/api/public/subscriptions'
     | '/chat/'
+    | '/api/public/telegram/tick'
+    | '/api/public/telegram/webhook'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -173,6 +194,8 @@ export interface FileRouteTypes {
     | '/chat/$threadId'
     | '/api/public/subscriptions'
     | '/chat'
+    | '/api/public/telegram/tick'
+    | '/api/public/telegram/webhook'
   id:
     | '__root__'
     | '/'
@@ -189,6 +212,8 @@ export interface FileRouteTypes {
     | '/_authenticated/chat/$threadId'
     | '/api/public/subscriptions'
     | '/_authenticated/chat/'
+    | '/api/public/telegram/tick'
+    | '/api/public/telegram/webhook'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -200,6 +225,8 @@ export interface RootRouteChildren {
   ApiChatRoute: typeof ApiChatRoute
   ApiGenerateImageRoute: typeof ApiGenerateImageRoute
   ApiPublicSubscriptionsRoute: typeof ApiPublicSubscriptionsRoute
+  ApiPublicTelegramTickRoute: typeof ApiPublicTelegramTickRoute
+  ApiPublicTelegramWebhookRoute: typeof ApiPublicTelegramWebhookRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -302,6 +329,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicSubscriptionsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/telegram/tick': {
+      id: '/api/public/telegram/tick'
+      path: '/api/public/telegram/tick'
+      fullPath: '/api/public/telegram/tick'
+      preLoaderRoute: typeof ApiPublicTelegramTickRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/telegram/webhook': {
+      id: '/api/public/telegram/webhook'
+      path: '/api/public/telegram/webhook'
+      fullPath: '/api/public/telegram/webhook'
+      preLoaderRoute: typeof ApiPublicTelegramWebhookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -335,6 +376,8 @@ const rootRouteChildren: RootRouteChildren = {
   ApiChatRoute: ApiChatRoute,
   ApiGenerateImageRoute: ApiGenerateImageRoute,
   ApiPublicSubscriptionsRoute: ApiPublicSubscriptionsRoute,
+  ApiPublicTelegramTickRoute: ApiPublicTelegramTickRoute,
+  ApiPublicTelegramWebhookRoute: ApiPublicTelegramWebhookRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

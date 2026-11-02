@@ -68,6 +68,15 @@ export type Database = {
           id: number
           subscriptions_api_enabled: boolean
           system_prompt: string
+          tg_admin_ids: string
+          tg_bot_username: string
+          tg_channel: string
+          tg_contact: string
+          tg_enabled: boolean
+          tg_plans: Json
+          tg_ref_credits: number
+          tg_ref_points: number
+          tg_store_text: string
           updated_at: string
         }
         Insert: {
@@ -81,6 +90,15 @@ export type Database = {
           id?: number
           subscriptions_api_enabled?: boolean
           system_prompt?: string
+          tg_admin_ids?: string
+          tg_bot_username?: string
+          tg_channel?: string
+          tg_contact?: string
+          tg_enabled?: boolean
+          tg_plans?: Json
+          tg_ref_credits?: number
+          tg_ref_points?: number
+          tg_store_text?: string
           updated_at?: string
         }
         Update: {
@@ -94,6 +112,15 @@ export type Database = {
           id?: number
           subscriptions_api_enabled?: boolean
           system_prompt?: string
+          tg_admin_ids?: string
+          tg_bot_username?: string
+          tg_channel?: string
+          tg_contact?: string
+          tg_enabled?: boolean
+          tg_plans?: Json
+          tg_ref_credits?: number
+          tg_ref_points?: number
+          tg_store_text?: string
           updated_at?: string
         }
         Relationships: []
@@ -299,6 +326,176 @@ export type Database = {
           id?: string
           key_hash?: string
           name?: string
+        }
+        Relationships: []
+      }
+      tg_drop_entries: {
+        Row: {
+          amount: number
+          choice: number | null
+          created_at: string
+          drop_id: string
+          id: string
+          tg_id: number
+        }
+        Insert: {
+          amount?: number
+          choice?: number | null
+          created_at?: string
+          drop_id: string
+          id?: string
+          tg_id: number
+        }
+        Update: {
+          amount?: number
+          choice?: number | null
+          created_at?: string
+          drop_id?: string
+          id?: string
+          tg_id?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tg_drop_entries_drop_id_fkey"
+            columns: ["drop_id"]
+            isOneToOne: false
+            referencedRelation: "tg_drops"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tg_drops: {
+        Row: {
+          created_at: string
+          description: string
+          ends_at: string | null
+          entry_cost: number
+          id: string
+          kind: string
+          message_id: number | null
+          min_points: number
+          min_referrals: number
+          prize_credits: number
+          prize_days: number
+          prize_plan: string | null
+          require_channel: boolean
+          starts_at: string
+          status: string
+          title: string
+          vote_options: Json
+          winners: Json
+          winners_count: number
+        }
+        Insert: {
+          created_at?: string
+          description?: string
+          ends_at?: string | null
+          entry_cost?: number
+          id?: string
+          kind?: string
+          message_id?: number | null
+          min_points?: number
+          min_referrals?: number
+          prize_credits?: number
+          prize_days?: number
+          prize_plan?: string | null
+          require_channel?: boolean
+          starts_at?: string
+          status?: string
+          title: string
+          vote_options?: Json
+          winners?: Json
+          winners_count?: number
+        }
+        Update: {
+          created_at?: string
+          description?: string
+          ends_at?: string | null
+          entry_cost?: number
+          id?: string
+          kind?: string
+          message_id?: number | null
+          min_points?: number
+          min_referrals?: number
+          prize_credits?: number
+          prize_days?: number
+          prize_plan?: string | null
+          require_channel?: boolean
+          starts_at?: string
+          status?: string
+          title?: string
+          vote_options?: Json
+          winners?: Json
+          winners_count?: number
+        }
+        Relationships: []
+      }
+      tg_link_tokens: {
+        Row: {
+          created_at: string
+          expires_at: string
+          profile_id: string
+          token: string
+        }
+        Insert: {
+          created_at?: string
+          expires_at: string
+          profile_id: string
+          token: string
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string
+          profile_id?: string
+          token?: string
+        }
+        Relationships: []
+      }
+      tg_updates: {
+        Row: {
+          created_at: string
+          update_id: number
+        }
+        Insert: {
+          created_at?: string
+          update_id: number
+        }
+        Update: {
+          created_at?: string
+          update_id?: number
+        }
+        Relationships: []
+      }
+      tg_users: {
+        Row: {
+          created_at: string
+          first_name: string | null
+          points: number
+          profile_id: string | null
+          referrals: number
+          referred_by: number | null
+          tg_id: number
+          username: string | null
+        }
+        Insert: {
+          created_at?: string
+          first_name?: string | null
+          points?: number
+          profile_id?: string | null
+          referrals?: number
+          referred_by?: number | null
+          tg_id: number
+          username?: string | null
+        }
+        Update: {
+          created_at?: string
+          first_name?: string | null
+          points?: number
+          profile_id?: string | null
+          referrals?: number
+          referred_by?: number | null
+          tg_id?: number
+          username?: string | null
         }
         Relationships: []
       }

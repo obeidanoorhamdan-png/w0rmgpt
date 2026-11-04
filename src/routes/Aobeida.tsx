@@ -4,6 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { Lock, Users, MessageSquare, Crown, Flame, Loader2, Copy, SearchCheck, Trash2 } from "lucide-react";
 import { WormLogo } from "@/components/WormLogo";
+import { TelegramAdmin } from "@/components/TelegramAdmin";
 import { SubscriptionIntegration } from "@/components/SubscriptionIntegration";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -158,6 +159,7 @@ function Admin() {
             <TabsTrigger value="connection">الاتصال والبرومبت</TabsTrigger>
             <TabsTrigger value="models">الموديلات</TabsTrigger>
             <TabsTrigger value="subs">الاشتراكات</TabsTrigger>
+            <TabsTrigger value="telegram">بوت تيلجرام</TabsTrigger>
             <TabsTrigger value="users">المستخدمون</TabsTrigger>
             <TabsTrigger value="general">عام</TabsTrigger>
             <TabsTrigger value="logs">السجل</TabsTrigger>
@@ -312,6 +314,8 @@ function Admin() {
               <Button variant="outline" disabled={newPw.length < 6} onClick={() => run(async () => { await changePw({ data: { token, password: newPw } }); setNewPw(""); }, "تم تغيير كلمة المرور")}>تغيير</Button>
             </div>
           </TabsContent>
+
+          <TabsContent value="telegram">{token && <TelegramAdmin token={token} />}</TabsContent>
 
           <TabsContent value="logs">
             <div className="glass divide-y rounded-xl border text-sm">

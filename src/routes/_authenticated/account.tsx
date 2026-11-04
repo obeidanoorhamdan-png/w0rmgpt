@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
+import { TelegramLink } from "@/components/TelegramLink";
 import { profileQuery, isPlanActive, PLAN_LABEL } from "@/lib/queries";
 
 export const Route = createFileRoute("/_authenticated/account")({
@@ -94,6 +95,7 @@ function Account() {
             <div className="mb-1 text-xs text-muted-foreground">رابط الدعوة — تحصل على +1 نقطة عن كل صديق يسجّل</div>
             <div className="flex gap-2"><Input readOnly dir="ltr" value={inviteLink} className="text-left text-xs" /><Button variant="outline" onClick={() => copy(inviteLink)}><Copy className="size-4" /></Button></div>
           </div>
+          <TelegramLink />
           <div className="grid grid-cols-3 gap-2 text-center text-sm">
             <div className="rounded-lg bg-muted p-3"><div className="font-display text-xl font-bold text-primary">{active ? "∞" : p.credits}</div>نقاط اليوم</div>
             <div className="rounded-lg bg-muted p-3"><div className="font-display text-xl font-bold text-primary">{p.bonus_credits}</div>نقاط الدعوات</div>

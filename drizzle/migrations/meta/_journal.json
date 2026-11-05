@@ -36,6 +36,13 @@
       "when": 1793620176788,
       "tag": "0004_telegram_store_and_drops",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1793876195222,
+      "tag": "0005_telegram_store_v2_all_features",
+      "breakpoints": true
     }
   ]
 }

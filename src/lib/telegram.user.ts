@@ -6,31 +6,34 @@ import {
 import {
   dupKeyOf, hasClaimed, makeCaptcha, pickPrize, pointsToDays, nextStreak, streakBonus, tierReward,
 } from "./drops";
+import type { Tables, TablesUpdate } from "@/integrations/supabase/types";
 
-export type TGUser = Record<string, any>;
+export type TGUser = Tables<"tg_users">;
 type From = { id: number; username?: string; first_name?: string; is_bot?: boolean };
 
 export async function upsertUser(from: From) {
   const client = await db();
   const { data: existing } = await client.from("tg_users").select("*").eq("tg_id", from.id).maybeSingle();
   if (existing) {
-    const patch: Record<string, unknown> = {};
+    const patch: TablesUpdate<"tg_users"> = {};
     if (existing.username !== (from.username ?? null)) patch.username = from.username ?? null;
     if (existing.first_name !== (from.first_name ?? null)) patch.first_name = from.first_name ?? null;
     patch.last_seen_at = new Date().toISOString();
     await client.from("tg_users").update(patch).eq("tg_id", from.id);
-    return { user: { ...existing, ...patch } as TGUser, isNew: false };
+    return { user: { ...existing, ...patch }, isNew: false };
   }
   const dup = dupKeyOf(from);
-  const { data } = await client.from("tg_users").insert({
+  const { data, error } = await client.from("tg_users").insert({
     tg_id: from.id, username: from.username ?? null, first_name: from.first_name ?? null, dup_key: dup,
   }).select("*").single();
-  return { user: data as TGUser, isNew: true };
+  if (error || !data) throw new Error("تعذّر إنشاء حساب البوت");
+  return { user: data, isNew: true };
 }
 
 /** New accounts prove they are human with a 4-letter code before the store opens. */
 export async function needsCaptcha(user: TGUser, s: S, chatId: number) {
-  if (!s.tg_captcha_enabled || user.captcha_code) return false;
+  if (!s.tg_captcha_enabled || user.captcha_verified) return false;
+  if (user.captcha_code) return true;
   const code = makeCaptcha();
   await (await db()).from("tg_users").update({ captcha_code: code, captcha_expires: new Date(Date.now() + 600_000).toISOString() })
     .eq("tg_id", user.tg_id);
@@ -42,13 +45,12 @@ export async function checkCaptcha(chatId: number, text: string) {
   const client = await db();
   const { data: u } = await client.from("tg_users").select("captcha_code, captcha_expires").eq("tg_id", chatId).maybeSingle();
   if (!u?.captcha_code) return null;
-  if (!new Date(u.captcha_expires).getTime() || new Date(u.captcha_expires) < new Date()) {
+  if (!u.captcha_expires || new Date(u.captcha_expires).getTime() <= Date.now()) {
     await checkCaptchaReset(chatId);
     return "expired";
   }
   if (text.trim().toUpperCase() !== u.captcha_code) return "wrong";
-  await client.from("tg_users").update({ captcha_code: null, captcha_expires: null }).eq("tg_id", chatId);
-  await awardBadge(chatId, "first_ref").catch(() => undefined);
+  await client.from("tg_users").update({ captcha_code: null, captcha_expires: null, captcha_verified: true }).eq("tg_id", chatId);
   return "ok";
 }
 
@@ -124,8 +126,8 @@ export async function claimDailyBox(user: TGUser, s: S) {
   const prize = pickPrize(asJson<{ points: number; weight?: number }[]>(s.tg_daily_box, [{ points: 10 }])) ?? { points: 10 };
   const streak = nextStreak(user.last_checkin ?? null, day, user.streak ?? 0);
   const bonus = streakBonus(asJson<{ days: number; points: number }[]>(s.tg_streak_bonus, []), streak);
-  await (await db()).from("tg_users").update({ last_box_at: day, last_checkin: day, streak }).eq("tg_id", user.tg_id);
-  await addPoints(user.tg_id, prize.points + bonus, "daily_box", `صندوق اليوم + سلسلة ${streak}`);
+  const { data: claimed, error } = await (await db()).rpc("tg_claim_reward", { p_tg_id: user.tg_id, p_day: day, p_kind: "daily_box", p_points: prize.points + bonus, p_streak: streak });
+  if (error || !claimed) return notify(user.tg_id, "صندوق اليوم مستخدم أو تعذّر حفظ المكافأة.");
   if (streak >= 7) await awardBadge(user.tg_id, "streak_7");
   await notify(user.tg_id, `🎁 صندوق اليوم: +${prize.points} نقطة\n🔥 سلسلتك: ${streak} يوم${bonus ? ` (+${bonus} مكافأة)` : ""}`);
 }
@@ -135,8 +137,8 @@ export async function spinWheel(user: TGUser, s: S) {
   if (hasClaimed(user.last_spin_at, day)) return notify(user.tg_id, "🎡 لفتة اليوم مستخدمة، ارجع غداً.");
   const prizes = asJson<{ points: number; weight?: number }[]>(s.tg_spin_prizes, [{ points: 5 }]);
   const prize = pickPrize(prizes) ?? { points: 5 };
-  await (await db()).from("tg_users").update({ last_spin_at: day }).eq("tg_id", user.tg_id);
-  await addPoints(user.tg_id, prize.points, "spin", "عجلة الحظ");
+  const { data: claimed, error } = await (await db()).rpc("tg_claim_reward", { p_tg_id: user.tg_id, p_day: day, p_kind: "spin", p_points: prize.points });
+  if (error || !claimed) return notify(user.tg_id, "لفة اليوم مستخدمة أو تعذّر حفظ المكافأة.");
   await notify(user.tg_id, `🎡 العجلة وقفت على: <b>+${prize.points} نقطة</b>`, [[{ text: "🎁 صندوق اليوم", callback_data: "box" }]]);
 }
 
@@ -147,10 +149,9 @@ export async function exchangeDays(user: TGUser, s: S, days: number) {
   if (days < 1) return notify(user.tg_id, "اختر يوما واحدا على الأقل.");
   if (user.points < cost) return notify(user.tg_id, `تحتاج ${cost} نقطة (${rate} نقطة لكل يوم).`);
   if (!user.profile_id) return notify(user.tg_id, "اربط حسابك في الموقع أولا من صفحة «حسابي».");
-  const code = "WORM-" + crypto.randomUUID().replace(/-/g, "").slice(0, 10).toUpperCase();
   const client = await db();
-  await client.from("gift_codes").insert({ code, plan: s.tg_trial_plan || "plus", days, max_uses: 1 });
-  await addPoints(user.tg_id, -cost, "exchange", `${days} يوم اشتراك`);
+  const { data: code, error } = await client.rpc("tg_exchange_code", { p_tg_id: user.tg_id, p_days: days });
+  if (error || !code) return notify(user.tg_id, "تعذّر الاستبدال؛ لم يتم خصم نقاطك.");
   await notify(user.tg_id, `🎟️ كود ${days} يوم: <code>${code}</code>\nاستخدمه في الموقع من صفحة الاشتراك.`);
 }
 
@@ -282,11 +283,9 @@ export async function paySecondLevel(ref: TGUser, s: S) {
 }
 
 /** Guard against throwaway accounts farming referrals. */
-export async function fakeReferral(ref: TGUser, newcomer: { created_at: string }, s: S) {
+export async function fakeReferral(ref: TGUser, newcomer: { created_at: string; is_bot?: boolean }, s: S) {
   if (!s.tg_ref_anti_fake) return false;
   if (newcomer.is_bot) return true;
-  const age = Date.now() - new Date(newcomer.created_at).getTime();
-  if (age < 60_000) return true;
   const { count } = await (await db()).from("tg_users").select("*", { count: "exact", head: true })
     .eq("referred_by", ref.tg_id).eq("paid", false).gt("created_at", new Date(Date.now() - 3600_000).toISOString());
   return (count ?? 0) >= 5;

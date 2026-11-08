@@ -7,6 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { DROP_KINDS, type DropKind } from "@/lib/drops";
 import { tgOverview, tgSaveSettings, tgRegisterWebhook, tgCreateDrop, tgDropAction } from "@/lib/telegram.functions";
+import { TelegramOperations } from "./TelegramOperations";
 
 type Data = Awaited<ReturnType<typeof tgOverview>>;
 const STATUS: Record<string, string> = { scheduled: "مجدول", live: "حي", closed: "منتهي" };
@@ -29,10 +30,17 @@ export function TelegramAdmin({ token }: { token: string }) {
   const [drop, setDrop] = useState(emptyDrop);
   const [filter, setFilter] = useState("all");
   const [busy, setBusy] = useState(false);
+  const [requiredChannels, setRequiredChannels] = useState("");
+  const [boxPrizes, setBoxPrizes] = useState("");
+  const [spinPrizes, setSpinPrizes] = useState("");
 
   const refresh = useCallback(async () => {
     const d = await load({ data: { token } });
     setData(d); setS(d.settings);
+    setRequiredChannels(Array.isArray(d.settings.tg_require_channels) ? d.settings.tg_require_channels.map(String).join("\n") : "");
+    const prizeLines = (v: unknown) => Array.isArray(v) ? v.flatMap((p) => p && typeof p === "object" && "points" in p ? [`${p.points}|${"weight" in p ? p.weight : 1}`] : []).join("\n") : "";
+    setBoxPrizes(prizeLines(d.settings.tg_daily_box));
+    setSpinPrizes(prizeLines(d.settings.tg_spin_prizes));
     setPlans(((d.settings.tg_plans as { plan: string; label: string; price: string }[]) ?? []).map((p) => `${p.plan}|${p.label}|${p.price}`).join("\n"));
   }, [load, token]);
   useEffect(() => { refresh().catch((e: Error) => toast.error(e.message)); }, [refresh]);
@@ -75,11 +83,27 @@ export function TelegramAdmin({ token }: { token: string }) {
         </div>
         <label className="block space-y-1 text-sm">رسالة الترحيب<Textarea value={s.tg_store_text} onChange={(e) => set("tg_store_text", e.target.value)} /></label>
         <label className="block space-y-1 text-sm">الخطط (سطر لكل خطة: plan|الاسم|السعر)<Textarea dir="ltr" value={plans} onChange={(e) => setPlans(e.target.value)} /></label>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <label className="flex min-h-11 items-center justify-between gap-3 text-sm">وضع الصيانة<Switch checked={s.tg_maintenance} onCheckedChange={(v) => set("tg_maintenance", v)} /></label>
+          <label className="flex min-h-11 items-center justify-between gap-3 text-sm">التحقق للمستخدمين الجدد<Switch checked={s.tg_captcha_enabled} onCheckedChange={(v) => set("tg_captcha_enabled", v)} /></label>
+          <label className="flex min-h-11 items-center justify-between gap-3 text-sm">تذاكر الدعم<Switch checked={s.tg_support_enabled} onCheckedChange={(v) => set("tg_support_enabled", v)} /></label>
+          <label className="space-y-1 text-sm">حد الضغط في الدقيقة<Input type="number" min={1} max={120} value={s.tg_rate_limit} onChange={(e) => set("tg_rate_limit", Number(e.target.value))} /></label>
+          <label className="space-y-1 text-sm">نقاط لكل يوم اشتراك<Input type="number" min={1} value={s.tg_points_per_day} onChange={(e) => set("tg_points_per_day", Number(e.target.value))} /></label>
+          <label className="space-y-1 text-sm">رسالة الصيانة<Input value={s.tg_maintenance_text} onChange={(e) => set("tg_maintenance_text", e.target.value)} /></label>
+          <label className="space-y-1 text-sm">قنوات الاشتراك الإجباري (يوزر لكل سطر)<Textarea dir="ltr" value={requiredChannels} onChange={(e) => setRequiredChannels(e.target.value)} /></label>
+          <label className="space-y-1 text-sm">جوائز الصندوق (نقاط|وزن لكل سطر)<Textarea dir="ltr" value={boxPrizes} onChange={(e) => setBoxPrizes(e.target.value)} /></label>
+          <label className="space-y-1 text-sm">جوائز العجلة (نقاط|وزن لكل سطر)<Textarea dir="ltr" value={spinPrizes} onChange={(e) => setSpinPrizes(e.target.value)} /></label>
+        </div>
         <div className="flex flex-wrap gap-2">
           <Button disabled={busy} onClick={() => run(() => save({ data: { token, patch: {
             tg_enabled: s.tg_enabled, tg_admin_ids: s.tg_admin_ids, tg_channel: s.tg_channel.trim(), tg_bot_username: s.tg_bot_username.trim(),
             tg_store_text: s.tg_store_text, tg_contact: s.tg_contact.trim(), tg_ref_points: s.tg_ref_points, tg_ref_credits: s.tg_ref_credits,
-            tg_plans: plans.split("\n").map((l) => l.split("|").map((x) => x.trim())).filter((p) => p.length === 3 && p[0]).map(([plan, label, price]) => ({ plan: plan!, label: label!, price: price! })),
+            tg_plans: plans.split("\n").map((l) => l.split("|").map((x) => x.trim())).flatMap(([plan, label, price]) => plan && label && price ? [{ plan, label, price }] : []),
+            tg_maintenance: s.tg_maintenance, tg_maintenance_text: s.tg_maintenance_text, tg_captcha_enabled: s.tg_captcha_enabled,
+            tg_rate_limit: s.tg_rate_limit, tg_support_enabled: s.tg_support_enabled, tg_points_per_day: s.tg_points_per_day,
+            tg_require_channels: requiredChannels.split("\n").map((x) => x.trim()).filter(Boolean),
+            tg_daily_box: boxPrizes.split("\n").filter((x) => x.trim()).map((x) => { const [points, weight] = x.split("|"); return { points: Number(points), weight: Number(weight ?? 1) }; }),
+            tg_spin_prizes: spinPrizes.split("\n").filter((x) => x.trim()).map((x) => { const [points, weight] = x.split("|"); return { points: Number(points), weight: Number(weight ?? 1) }; }),
           } } }), "تم الحفظ")}>حفظ</Button>
           <Button variant="outline" disabled={busy || !data.connected} onClick={() => run(async () => {
             const origin = window.location.origin.includes("id-preview--") ? "https://w0rmgpt.lovable.app" : window.location.origin;
@@ -93,7 +117,7 @@ export function TelegramAdmin({ token }: { token: string }) {
       <section className="glass space-y-3 rounded-xl border p-4">
         <h3 className="font-bold">إنشاء دروب حظ 🥚</h3>
         <div className="flex flex-wrap gap-2">
-          {(Object.keys(DROP_KINDS) as DropKind[]).map((k) => (
+          {(["normal", "sequential", "conditional", "auction", "vote", "points"] as DropKind[]).map((k) => (
             <Button key={k} size="sm" variant={d.kind === k ? "default" : "outline"} onClick={() => setD("kind", k)}>{DROP_KINDS[k]}</Button>
           ))}
         </div>
@@ -132,7 +156,7 @@ export function TelegramAdmin({ token }: { token: string }) {
       <section className="glass space-y-3 rounded-xl border p-4">
         <div className="flex flex-wrap gap-2">
           {[["all", "كل الدروبات"], ["scheduled", "المجدولة"], ["live", "الحية"], ["closed", "المنتهية"]].map(([k, l]) => (
-            <Button key={k} size="sm" variant={filter === k ? "default" : "outline"} onClick={() => setFilter(k!)}>{l}</Button>
+            <Button key={k} size="sm" variant={filter === k ? "default" : "outline"} onClick={() => k && setFilter(k)}>{l}</Button>
           ))}
         </div>
         {list.length === 0 && <p className="text-sm text-muted-foreground">لا توجد دروبات</p>}
@@ -156,6 +180,7 @@ export function TelegramAdmin({ token }: { token: string }) {
           ))}
         </div>
       </section>
+      <TelegramOperations token={token} />
     </div>
   );
 }

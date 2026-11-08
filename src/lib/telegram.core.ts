@@ -1,9 +1,10 @@
 // Server-only Telegram core: gateway calls, settings, ledger, safety gates. No UI imports.
 import { parseAdminIds, rateAllows } from "./drops";
+import type { Tables } from "@/integrations/supabase/types";
 
 const GATEWAY = "https://connector-gateway.lovable.dev/telegram";
 export type Kb = { text: string; callback_data?: string; url?: string }[][];
-export type S = Record<string, any>;
+export type S = Tables<"app_settings">;
 
 export async function tg<T = unknown>(method: string, body: Record<string, unknown>): Promise<T> {
   const lovable = process.env["LOVABLE_API_KEY"];
@@ -95,20 +96,14 @@ export async function canManage(tgId: number, area: "drops" | "support"): Promis
 }
 
 export async function logBot(adminTgId: number, action: string, detail = "") {
-  await (await db()).from("tg_bot_log").insert({ admin_tg_id: adminTgId, action, detail }).catch(() => undefined);
+  await (await db()).from("tg_bot_log").insert({ admin_tg_id: adminTgId, action, detail });
 }
 
 /** Move points and keep the ledger + totals consistent. */
 export async function addPoints(tgId: number, delta: number, kind: string, note = "") {
   const client = await db();
-  const { data: u } = await client.from("tg_users").select("points, points_earned, points_spent").eq("tg_id", tgId).maybeSingle();
-  if (!u) return;
-  await client.from("tg_users").update({
-    points: Math.max(0, u.points + delta),
-    points_earned: u.points_earned + Math.max(0, delta),
-    points_spent: u.points_spent + Math.max(0, -delta),
-  }).eq("tg_id", tgId);
-  await client.from("tg_txn").insert({ tg_id: tgId, kind, amount: delta, note }).catch(() => undefined);
+  const { data, error } = await client.rpc("tg_move_points", { p_tg_id: tgId, p_delta: delta, p_kind: kind, p_note: note });
+  if (error || !data) throw new Error("الرصيد لا يكفي أو تعذّر حفظ العملية");
 }
 
 /** Give a badge once; returns true the first time. */
@@ -151,7 +146,7 @@ export async function blocked(tgId: number, s: S): Promise<boolean> {
 
 /** Where a drop gets posted: the main channel plus any extra channels. */
 export function channelsOf(s: S, drop?: { channels?: unknown } | null): string[] {
-  const extra = Array.isArray(drop?.channels) ? (drop!.channels as unknown[]).map(String) : [];
+  const extra = Array.isArray(drop?.channels) ? drop.channels.map(String) : [];
   const base = Array.isArray(s.tg_channels) ? (s.tg_channels as unknown[]).map(String) : [];
   return [...new Set([s.tg_channel, ...base, ...extra].map((c) => String(c ?? "").trim()).filter(Boolean))];
 }

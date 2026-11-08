@@ -15,11 +15,12 @@ export const tgOverview = createServerFn({ method: "POST" })
     const db = await auth(data.token);
     const { dropStats } = await import("./telegram.server");
     const [{ data: s }, { data: drops }, stats] = await Promise.all([
-      db.from("app_settings").select("tg_enabled, tg_admin_ids, tg_channel, tg_bot_username, tg_store_text, tg_contact, tg_plans, tg_ref_points, tg_ref_credits").eq("id", 1).single(),
+      db.from("app_settings").select("tg_enabled, tg_admin_ids, tg_channel, tg_bot_username, tg_store_text, tg_contact, tg_plans, tg_ref_points, tg_ref_credits, tg_maintenance, tg_maintenance_text, tg_captcha_enabled, tg_rate_limit, tg_support_enabled, tg_require_channels, tg_points_per_day, tg_daily_box, tg_spin_prizes, tg_streak_bonus").eq("id", 1).single(),
       db.from("tg_drops").select("*").order("created_at", { ascending: false }).limit(100),
       dropStats(),
     ]);
-    return { settings: s!, drops: drops ?? [], stats, connected: Boolean(process.env["TELEGRAM_API_KEY"]) };
+    if (!s) throw new Error("إعدادات البوت غير متاحة");
+    return { settings: s, drops: drops ?? [], stats, connected: Boolean(process.env["TELEGRAM_API_KEY"]) };
   });
 
 const settingsSchema = z.object({
@@ -32,13 +33,23 @@ const settingsSchema = z.object({
   tg_plans: z.array(z.object({ plan: z.string().max(20), label: z.string().max(50), price: z.string().max(50) })).max(10),
   tg_ref_points: z.number().int().min(0).max(1000),
   tg_ref_credits: z.number().int().min(0).max(1000),
+  tg_maintenance: z.boolean().optional(),
+  tg_maintenance_text: z.string().min(1).max(1000).optional(),
+  tg_captcha_enabled: z.boolean().optional(),
+  tg_rate_limit: z.number().int().min(1).max(120).optional(),
+  tg_support_enabled: z.boolean().optional(),
+  tg_require_channels: z.array(z.string().regex(/^@[A-Za-z0-9_]{5,32}$/)).max(10).optional(),
+  tg_points_per_day: z.number().int().min(1).max(100000).optional(),
+  tg_daily_box: z.array(z.object({ points: z.number().int().min(0).max(10000), weight: z.number().positive().max(1000) })).min(1).max(20).optional(),
+  tg_spin_prizes: z.array(z.object({ points: z.number().int().min(0).max(10000), weight: z.number().positive().max(1000) })).min(1).max(20).optional(),
 });
 
 export const tgSaveSettings = createServerFn({ method: "POST" })
   .inputValidator((d: T & { patch: z.infer<typeof settingsSchema> }) => ({ token: d.token, patch: settingsSchema.parse(d.patch) }))
   .handler(async ({ data }) => {
     const db = await auth(data.token);
-    await db.from("app_settings").update(data.patch).eq("id", 1);
+    const { error } = await db.from("app_settings").update(data.patch).eq("id", 1);
+    if (error) throw new Error("تعذّر حفظ الإعدادات");
     return { ok: true };
   });
 
@@ -48,14 +59,16 @@ export const tgRegisterWebhook = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     await auth(data.token);
     const { tg, webhookSecret } = await import("./telegram.server");
+    const { registerMenus } = await import("./telegram.user");
     const url = `${data.origin.replace(/\/$/, "")}/api/public/telegram/webhook`;
     await tg("setWebhook", { url, secret_token: await webhookSecret(), allowed_updates: ["message", "callback_query"] });
     const me = await tg<{ username: string }>("getMe", {});
+    await registerMenus(me.username);
     return { url, username: me.username };
   });
 
 const dropSchema = z.object({
-  kind: z.enum(["normal", "sequential", "conditional", "auction", "vote", "points"]),
+  kind: z.enum(["normal", "sequential", "conditional", "auction", "vote", "points", "egg", "lottery", "reverse", "first", "quiz"]),
   title: z.string().min(1).max(120),
   description: z.string().max(1000),
   prize_plan: z.enum(["plus", "pro", "ultra"]).nullable(),
@@ -110,4 +123,44 @@ export const tgCreateLinkToken = createServerFn({ method: "POST" })
     const bot = (s?.tg_bot_username ?? "").replace(/^@/, "");
     if (!bot) throw new Error("البوت غير مضبوط بعد");
     return { url: `https://t.me/${bot}?start=link_${token}` };
+  });
+
+export const tgOperations = createServerFn({ method: "POST" })
+  .inputValidator((d: T) => d)
+  .handler(async ({ data }) => {
+    const db = await auth(data.token);
+    const [orders, tickets, users, log] = await Promise.all([
+      db.from("tg_orders").select("id,tg_id,label,price,status,created_at").order("created_at", { ascending: false }).limit(50),
+      db.from("tg_tickets").select("*").order("created_at", { ascending: false }).limit(50),
+      db.from("tg_users").select("tg_id,first_name,username,points,referrals,banned").order("created_at", { ascending: false }).limit(100),
+      db.from("tg_bot_log").select("*").order("created_at", { ascending: false }).limit(50),
+    ]);
+    return { orders: orders.data ?? [], tickets: tickets.data ?? [], users: users.data ?? [], log: log.data ?? [] };
+  });
+
+export const tgModerate = createServerFn({ method: "POST" })
+  .inputValidator((d: T & { tgId: number; banned: boolean }) => ({ token: d.token, tgId: z.number().int().positive().parse(d.tgId), banned: z.boolean().parse(d.banned) }))
+  .handler(async ({ data }) => {
+    const db = await auth(data.token);
+    const { error } = await db.from("tg_users").update({ banned: data.banned }).eq("tg_id", data.tgId);
+    if (error) throw new Error("تعذّر تغيير حالة المستخدم");
+    await db.from("tg_bot_log").insert({ admin_tg_id: 0, action: data.banned ? "ban" : "unban", detail: String(data.tgId) });
+    return { ok: true };
+  });
+
+export const tgTicketReply = createServerFn({ method: "POST" })
+  .inputValidator((d: T & { id: string; text: string; close?: boolean }) => ({ token: d.token, id: z.string().uuid().parse(d.id), text: z.string().max(3000).parse(d.text), close: d.close === true }))
+  .handler(async ({ data }) => {
+    const db = await auth(data.token);
+    const { data: ticket } = await db.from("tg_tickets").select("tg_id,status").eq("id", data.id).single();
+    if (!ticket || ticket.status !== "open") throw new Error("التذكرة مغلقة أو غير موجودة");
+    if (data.text.trim()) {
+      const { error } = await db.from("tg_ticket_msgs").insert({ ticket_id: data.id, text: data.text, from_admin: true });
+      if (error) throw new Error("تعذّر حفظ الرد");
+      const { tg, esc } = await import("./telegram.core");
+      await tg("sendMessage", { chat_id: ticket.tg_id, text: `🛟 رد الدعم\n${esc(data.text)}`, parse_mode: "HTML" });
+    }
+    if (data.close) await db.from("tg_tickets").update({ status: "closed", closed_at: new Date().toISOString() }).eq("id", data.id);
+    await db.from("tg_bot_log").insert({ admin_tg_id: 0, action: data.close ? "ticket_close" : "ticket_reply", detail: data.id });
+    return { ok: true };
   });

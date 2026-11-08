@@ -96,7 +96,7 @@ export async function canManage(tgId: number, area: "drops" | "support"): Promis
 }
 
 export async function logBot(adminTgId: number, action: string, detail = "") {
-  await (await db()).from("tg_bot_log").insert({ admin_tg_id: adminTgId, action, detail }).catch(() => undefined);
+  await (await db()).from("tg_bot_log").insert({ admin_tg_id: adminTgId, action, detail });
 }
 
 /** Move points and keep the ledger + totals consistent. */
@@ -109,7 +109,7 @@ export async function addPoints(tgId: number, delta: number, kind: string, note 
     points_earned: u.points_earned + Math.max(0, delta),
     points_spent: u.points_spent + Math.max(0, -delta),
   }).eq("tg_id", tgId);
-  await client.from("tg_txn").insert({ tg_id: tgId, kind, amount: delta, note }).catch(() => undefined);
+  await client.from("tg_txn").insert({ tg_id: tgId, kind, amount: delta, note });
 }
 
 /** Give a badge once; returns true the first time. */

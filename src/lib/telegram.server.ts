@@ -1,5 +1,9 @@
 // Server-only Telegram store + drops engine. Called by the webhook, the cron tick and admin functions.
 import { DROP_KINDS, joinBlocker, parseAdminIds, pickWinners, type Entry } from "./drops";
+import { blocked, rateOk, notify } from "./telegram.core";
+import { upsertUser, needsCaptcha, checkCaptcha, channelGate, MAIN_MENU, claimDailyBox, spinWheel, exchangeDays, profileText, setLanguage, toggleNotifications } from "./telegram.user";
+import { shopAction } from "./telegram.shop.server";
+import { openSupport, closeSupport, supportMessage } from "./telegram.support.server";
 
 const GATEWAY = "https://connector-gateway.lovable.dev/telegram";
 type Kb = { text: string; callback_data?: string; url?: string }[][];
@@ -163,24 +167,7 @@ export async function tick() {
   return { published: due?.length ?? 0, closed: ended?.length ?? 0 };
 }
 
-async function upsertUser(from: { id: number; username?: string; first_name?: string }) {
-  const client = await db();
-  const { data: existing } = await client.from("tg_users").select("*").eq("tg_id", from.id).maybeSingle();
-  if (existing) {
-    if (existing.username !== (from.username ?? null)) await client.from("tg_users").update({ username: from.username ?? null }).eq("tg_id", from.id);
-    return { user: existing, isNew: false };
-  }
-  const { data } = await client.from("tg_users").insert({ tg_id: from.id, username: from.username ?? null, first_name: from.first_name ?? null }).select("*").single();
-  return { user: data!, isNew: true };
-}
-
-function storeMenu(): Kb {
-  return [
-    [{ text: "🛒 الاشتراكات", callback_data: "plans" }],
-    [{ text: "🎁 رابط الإحالة", callback_data: "ref" }, { text: "⭐ نقاطي", callback_data: "me" }],
-    [{ text: "🥚 الدروبات الحالية", callback_data: "drops" }],
-  ];
-}
+function storeMenu(): Kb { return MAIN_MENU; }
 
 async function handleStart(chatId: number, from: { id: number; username?: string; first_name?: string }, arg: string) {
   const client = await db();
@@ -207,7 +194,8 @@ async function handleStart(chatId: number, from: { id: number; username?: string
       await tg("sendMessage", { chat_id: ref.tg_id, text: `🎉 انضم صديق عبر رابطك! +${s.tg_ref_points} نقطة` }).catch(() => undefined);
     }
   }
-  void user;
+  if (await needsCaptcha(user, s, chatId)) return;
+  if (!(await channelGate(chatId, from.id, s))) return;
   await tg("sendMessage", { chat_id: chatId, text: s.tg_store_text, reply_markup: { inline_keyboard: storeMenu() } });
 }
 
@@ -226,15 +214,26 @@ async function handleCallback(q: { id: string; from: { id: number; username?: st
   const data = q.data ?? "";
   const chatId = q.message?.chat.id ?? q.from.id;
 
-  if (data === "plans") {
-    const plans = (s.tg_plans as { plan: string; label: string; price: string }[]) ?? [];
-    const contact = s.tg_contact.replace(/^@/, "");
-    await tg("sendMessage", {
-      chat_id: q.from.id, parse_mode: "HTML",
-      text: `🛒 <b>خطط الاشتراك</b>\n\n${plans.map((p) => `• ${esc(p.label)} — ${esc(p.price)}`).join("\n")}\n\nللشراء تواصل مع الأدمن وسيرسل لك كود التفعيل.`,
-      reply_markup: contact ? { inline_keyboard: [[{ text: "📞 تواصل مع الأدمن", url: `https://t.me/${contact}` }]] } : undefined,
-    });
-    return answer("");
+  if (await blocked(q.from.id, s)) return answer("غير متاح", true);
+  if (!(await rateOk(`tap:${q.from.id}`, s.tg_rate_limit))) return answer("انتظر قليلاً قبل المحاولة", true);
+  if (await needsCaptcha(user, s, q.from.id)) return answer("أكمل التحقق في محادثة البوت", true);
+  if (!(await channelGate(q.from.id, q.from.id, s))) return answer("اشترك بالقنوات المطلوبة", true);
+  await answer("");
+  if (await shopAction(user, data, s)) return;
+  if (data === "box") return claimDailyBox(user, s);
+  if (data === "spin") return spinWheel(user, s);
+  if (data === "support") return openSupport(user.tg_id, s);
+  if (data === "support:close") return closeSupport(user.tg_id);
+  if (data.startsWith("exchange:")) {
+    const days = Number(data.split(":")[1]);
+    if ([1, 7, 30].includes(days)) return exchangeDays(user, s, days);
+    return;
+  }
+  if (data === "lang:ar" || data === "lang:en") return setLanguage(user.tg_id, data === "lang:ar" ? "ar" : "en");
+  if (data === "notifications") return toggleNotifications(user.tg_id, !user.notifications_on);
+  if (data === "leaderboard") {
+    const { data: top } = await client.from("tg_users").select("first_name,referrals").eq("banned", false).order("referrals", { ascending: false }).limit(10);
+    return notify(user.tg_id, `🏆 <b>متصدرو الإحالات</b>\n${top?.map((u, i) => `${i+1}. ${esc(u.first_name ?? "مستخدم")} — ${u.referrals}`).join("\n") || "لا توجد نتائج"}`);
   }
   if (data === "ref") {
     const link = `https://t.me/${s.tg_bot_username.replace(/^@/, "")}?start=ref_${q.from.id}`;
@@ -242,7 +241,7 @@ async function handleCallback(q: { id: string; from: { id: number; username?: st
     return answer("");
   }
   if (data === "me") {
-    await tg("sendMessage", { chat_id: q.from.id, text: `⭐ نقاطك: ${user.points}\n👥 إحالاتك: ${user.referrals}\n🔗 الموقع: ${user.profile_id ? "مربوط" : "غير مربوط"}` });
+    await notify(q.from.id, await profileText(user), [[{ text: "🏆 المتصدرون", callback_data: "leaderboard" }, { text: "🔔 الإشعارات", callback_data: "notifications" }], [{ text: "عربية", callback_data: "lang:ar" }, { text: "English", callback_data: "lang:en" }], [1, 7, 30].map((n) => ({ text: `استبدال ${n} يوم`, callback_data: `exchange:${n}` }))]);
     return answer("");
   }
   if (data === "drops") {
@@ -261,6 +260,7 @@ async function handleCallback(q: { id: string; from: { id: number; username?: st
   const { data: existing } = await client.from("tg_drop_entries").select("*").eq("drop_id", d.id).eq("tg_id", q.from.id).maybeSingle();
 
   if (action === "bid") {
+    if (d.kind !== "auction" || ![1, 5, 10].includes(Number(arg))) return answer("مزايدة غير صالحة", true);
     const next = (existing?.amount ?? 0) + Number(arg ?? 1);
     if (next > user.points) return answer(`نقاطك (${user.points}) لا تكفي لهذه المزايدة`, true);
     if (existing) await client.from("tg_drop_entries").update({ amount: next }).eq("id", existing.id);
@@ -270,11 +270,13 @@ async function handleCallback(q: { id: string; from: { id: number; username?: st
   }
   if (action === "vote") {
     const choice = Number(arg);
+    if (d.kind !== "vote" || !Number.isInteger(choice) || !Array.isArray(d.vote_options) || choice < 0 || choice >= d.vote_options.length) return answer("خيار غير صالح", true);
     if (existing) await client.from("tg_drop_entries").update({ choice }).eq("id", existing.id);
     else await client.from("tg_drop_entries").insert({ drop_id: d.id, tg_id: q.from.id, choice });
     await refreshPost(d);
     return answer("تم تسجيل صوتك ✅");
   }
+  if (!["normal", "sequential", "conditional", "points", "egg"].includes(d.kind)) return answer("هذا النوع يحتاج إعداد خطوات المشاركة أولاً", true);
   if (existing) return answer("أنت مشارك بالفعل ✅");
   const { error } = await client.from("tg_drop_entries").insert({ drop_id: d.id, tg_id: q.from.id });
   if (error) return answer("أنت مشارك بالفعل ✅");
@@ -300,12 +302,22 @@ export async function handleUpdate(u: Update) {
   if (u.callback_query) return handleCallback(u.callback_query);
   const m = u.message;
   if (!m?.from || m.chat.type !== "private" || !m.text) return;
+  if (await blocked(m.from.id, s)) return;
+  const { user } = await upsertUser(m.from);
+  if (!(await rateOk(`msg:${m.from.id}`, s.tg_rate_limit))) return notify(m.chat.id, "انتظر قليلاً قبل المحاولة.");
+  const captcha = await checkCaptcha(m.from.id, m.text);
+  if (captcha) return notify(m.chat.id, captcha === "ok" ? "✅ تم التحقق؛ افتح المتجر عبر /start" : "الرمز غير صحيح أو انتهت صلاحيته.");
   const [cmd, arg = ""] = m.text.trim().split(/\s+/);
   if (cmd === "/start") return handleStart(m.chat.id, m.from, arg);
   if (cmd === "/stats" && parseAdminIds(s.tg_admin_ids).includes(m.from.id)) {
     const st = await dropStats();
     return tg("sendMessage", { chat_id: m.chat.id, text: `📊 المستخدمون: ${st.users}\nالدروبات: ${st.total} (حي ${st.live}، مجدول ${st.scheduled}، منتهي ${st.closed})\nالمشاركات: ${st.entries}` });
   }
+  if (await needsCaptcha(user, s, m.chat.id)) return;
+  if (!(await channelGate(m.chat.id, m.from.id, s))) return;
+  if (cmd === "/support") return openSupport(m.from.id, s);
+  if (await supportMessage(m.from.id, m.text, s)) return;
+  if (cmd === "/plans" || cmd === "/orders") return shopAction(user, cmd.slice(1), s);
   return tg("sendMessage", { chat_id: m.chat.id, text: s.tg_store_text, reply_markup: { inline_keyboard: storeMenu() } });
 }
 

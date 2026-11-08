@@ -1096,6 +1096,7 @@ export type Database = {
           banned: boolean
           captcha_code: string | null
           captcha_expires: string | null
+          captcha_verified: boolean
           created_at: string
           dup_key: string | null
           first_name: string | null
@@ -1125,6 +1126,7 @@ export type Database = {
           banned?: boolean
           captcha_code?: string | null
           captcha_expires?: string | null
+          captcha_verified?: boolean
           created_at?: string
           dup_key?: string | null
           first_name?: string | null
@@ -1154,6 +1156,7 @@ export type Database = {
           banned?: boolean
           captcha_code?: string | null
           captcha_expires?: string | null
+          captcha_verified?: boolean
           created_at?: string
           dup_key?: string | null
           first_name?: string | null
@@ -1216,6 +1219,29 @@ export type Database = {
     }
     Functions: {
       claim_daily: { Args: never; Returns: undefined }
+      tg_claim_reward: {
+        Args: {
+          p_day: string
+          p_kind: string
+          p_points: number
+          p_streak?: number
+          p_tg_id: number
+        }
+        Returns: boolean
+      }
+      tg_exchange_code: {
+        Args: { p_days: number; p_tg_id: number }
+        Returns: string
+      }
+      tg_move_points: {
+        Args: {
+          p_delta: number
+          p_kind: string
+          p_note?: string
+          p_tg_id: number
+        }
+        Returns: boolean
+      }
     }
     Enums: {
       [_ in never]: never

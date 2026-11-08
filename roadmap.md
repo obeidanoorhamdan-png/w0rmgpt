@@ -1,4 +1,7 @@
 # WORM GPT completion
+- [ ] Continue all selected Telegram features: repair current errors and connect the new modules to the bot and admin panel.
+- [ ] Verify Telegram shopping, daily rewards, support, advanced drops, growth and moderation flows; live delivery requires configured bot/channel.
+- [ ] Automatic cryptocurrency payments require a selected payment service and credentials; do not simulate payment confirmation.
 - [ ] Resize controls and adapt all interfaces for phones, tablets, and desktop; verify representative flows.
 - [ ] Connect Resend and verify supported authentication email delivery prerequisites.
 - [x] Renew chat workspace, sidebar, image/voice presentation, and verify search, draft reuse, autosave, and export.

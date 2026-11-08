@@ -19,7 +19,8 @@ export const tgOverview = createServerFn({ method: "POST" })
       db.from("tg_drops").select("*").order("created_at", { ascending: false }).limit(100),
       dropStats(),
     ]);
-    return { settings: s!, drops: drops ?? [], stats, connected: Boolean(process.env["TELEGRAM_API_KEY"]) };
+    if (!s) throw new Error("إعدادات البوت غير متاحة");
+    return { settings: s, drops: drops ?? [], stats, connected: Boolean(process.env["TELEGRAM_API_KEY"]) };
   });
 
 const settingsSchema = z.object({
@@ -55,7 +56,7 @@ export const tgRegisterWebhook = createServerFn({ method: "POST" })
   });
 
 const dropSchema = z.object({
-  kind: z.enum(["normal", "sequential", "conditional", "auction", "vote", "points"]),
+  kind: z.enum(["normal", "sequential", "conditional", "auction", "vote", "points", "egg", "lottery", "reverse", "first", "quiz"]),
   title: z.string().min(1).max(120),
   description: z.string().max(1000),
   prize_plan: z.enum(["plus", "pro", "ultra"]).nullable(),

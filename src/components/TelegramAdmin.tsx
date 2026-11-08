@@ -79,7 +79,7 @@ export function TelegramAdmin({ token }: { token: string }) {
           <Button disabled={busy} onClick={() => run(() => save({ data: { token, patch: {
             tg_enabled: s.tg_enabled, tg_admin_ids: s.tg_admin_ids, tg_channel: s.tg_channel.trim(), tg_bot_username: s.tg_bot_username.trim(),
             tg_store_text: s.tg_store_text, tg_contact: s.tg_contact.trim(), tg_ref_points: s.tg_ref_points, tg_ref_credits: s.tg_ref_credits,
-            tg_plans: plans.split("\n").map((l) => l.split("|").map((x) => x.trim())).filter((p) => p.length === 3 && p[0]).map(([plan, label, price]) => ({ plan: plan!, label: label!, price: price! })),
+            tg_plans: plans.split("\n").map((l) => l.split("|").map((x) => x.trim())).flatMap(([plan, label, price]) => plan && label && price ? [{ plan, label, price }] : []),
           } } }), "تم الحفظ")}>حفظ</Button>
           <Button variant="outline" disabled={busy || !data.connected} onClick={() => run(async () => {
             const origin = window.location.origin.includes("id-preview--") ? "https://w0rmgpt.lovable.app" : window.location.origin;
@@ -132,7 +132,7 @@ export function TelegramAdmin({ token }: { token: string }) {
       <section className="glass space-y-3 rounded-xl border p-4">
         <div className="flex flex-wrap gap-2">
           {[["all", "كل الدروبات"], ["scheduled", "المجدولة"], ["live", "الحية"], ["closed", "المنتهية"]].map(([k, l]) => (
-            <Button key={k} size="sm" variant={filter === k ? "default" : "outline"} onClick={() => setFilter(k!)}>{l}</Button>
+            <Button key={k} size="sm" variant={filter === k ? "default" : "outline"} onClick={() => k && setFilter(k)}>{l}</Button>
           ))}
         </div>
         {list.length === 0 && <p className="text-sm text-muted-foreground">لا توجد دروبات</p>}

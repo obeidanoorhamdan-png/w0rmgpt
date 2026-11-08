@@ -1,9 +1,10 @@
 // Server-only Telegram core: gateway calls, settings, ledger, safety gates. No UI imports.
 import { parseAdminIds, rateAllows } from "./drops";
+import type { Tables } from "@/integrations/supabase/types";
 
 const GATEWAY = "https://connector-gateway.lovable.dev/telegram";
 export type Kb = { text: string; callback_data?: string; url?: string }[][];
-export type S = Record<string, any>;
+export type S = Tables<"app_settings">;
 
 export async function tg<T = unknown>(method: string, body: Record<string, unknown>): Promise<T> {
   const lovable = process.env["LOVABLE_API_KEY"];
@@ -151,7 +152,7 @@ export async function blocked(tgId: number, s: S): Promise<boolean> {
 
 /** Where a drop gets posted: the main channel plus any extra channels. */
 export function channelsOf(s: S, drop?: { channels?: unknown } | null): string[] {
-  const extra = Array.isArray(drop?.channels) ? (drop!.channels as unknown[]).map(String) : [];
+  const extra = Array.isArray(drop?.channels) ? drop.channels.map(String) : [];
   const base = Array.isArray(s.tg_channels) ? (s.tg_channels as unknown[]).map(String) : [];
   return [...new Set([s.tg_channel, ...base, ...extra].map((c) => String(c ?? "").trim()).filter(Boolean))];
 }

@@ -32,7 +32,7 @@ export async function upsertUser(from: From) {
 
 /** New accounts prove they are human with a 4-letter code before the store opens. */
 export async function needsCaptcha(user: TGUser, s: S, chatId: number) {
-  if (!s.tg_captcha_enabled || (!user.captcha_code && user.xp > 0)) return false;
+  if (!s.tg_captcha_enabled || user.captcha_verified) return false;
   if (user.captcha_code) return true;
   const code = makeCaptcha();
   await (await db()).from("tg_users").update({ captcha_code: code, captcha_expires: new Date(Date.now() + 600_000).toISOString() })
@@ -50,7 +50,7 @@ export async function checkCaptcha(chatId: number, text: string) {
     return "expired";
   }
   if (text.trim().toUpperCase() !== u.captcha_code) return "wrong";
-  await client.from("tg_users").update({ captcha_code: null, captcha_expires: null, xp: 1 }).eq("tg_id", chatId);
+  await client.from("tg_users").update({ captcha_code: null, captcha_expires: null, captcha_verified: true }).eq("tg_id", chatId);
   return "ok";
 }
 
@@ -126,8 +126,8 @@ export async function claimDailyBox(user: TGUser, s: S) {
   const prize = pickPrize(asJson<{ points: number; weight?: number }[]>(s.tg_daily_box, [{ points: 10 }])) ?? { points: 10 };
   const streak = nextStreak(user.last_checkin ?? null, day, user.streak ?? 0);
   const bonus = streakBonus(asJson<{ days: number; points: number }[]>(s.tg_streak_bonus, []), streak);
-  await (await db()).from("tg_users").update({ last_box_at: day, last_checkin: day, streak }).eq("tg_id", user.tg_id);
-  await addPoints(user.tg_id, prize.points + bonus, "daily_box", `صندوق اليوم + سلسلة ${streak}`);
+  const { data: claimed, error } = await (await db()).rpc("tg_claim_reward", { p_tg_id: user.tg_id, p_day: day, p_kind: "daily_box", p_points: prize.points + bonus, p_streak: streak });
+  if (error || !claimed) return notify(user.tg_id, "صندوق اليوم مستخدم أو تعذّر حفظ المكافأة.");
   if (streak >= 7) await awardBadge(user.tg_id, "streak_7");
   await notify(user.tg_id, `🎁 صندوق اليوم: +${prize.points} نقطة\n🔥 سلسلتك: ${streak} يوم${bonus ? ` (+${bonus} مكافأة)` : ""}`);
 }
@@ -137,8 +137,8 @@ export async function spinWheel(user: TGUser, s: S) {
   if (hasClaimed(user.last_spin_at, day)) return notify(user.tg_id, "🎡 لفتة اليوم مستخدمة، ارجع غداً.");
   const prizes = asJson<{ points: number; weight?: number }[]>(s.tg_spin_prizes, [{ points: 5 }]);
   const prize = pickPrize(prizes) ?? { points: 5 };
-  await (await db()).from("tg_users").update({ last_spin_at: day }).eq("tg_id", user.tg_id);
-  await addPoints(user.tg_id, prize.points, "spin", "عجلة الحظ");
+  const { data: claimed, error } = await (await db()).rpc("tg_claim_reward", { p_tg_id: user.tg_id, p_day: day, p_kind: "spin", p_points: prize.points });
+  if (error || !claimed) return notify(user.tg_id, "لفة اليوم مستخدمة أو تعذّر حفظ المكافأة.");
   await notify(user.tg_id, `🎡 العجلة وقفت على: <b>+${prize.points} نقطة</b>`, [[{ text: "🎁 صندوق اليوم", callback_data: "box" }]]);
 }
 
@@ -149,10 +149,9 @@ export async function exchangeDays(user: TGUser, s: S, days: number) {
   if (days < 1) return notify(user.tg_id, "اختر يوما واحدا على الأقل.");
   if (user.points < cost) return notify(user.tg_id, `تحتاج ${cost} نقطة (${rate} نقطة لكل يوم).`);
   if (!user.profile_id) return notify(user.tg_id, "اربط حسابك في الموقع أولا من صفحة «حسابي».");
-  const code = "WORM-" + crypto.randomUUID().replace(/-/g, "").slice(0, 10).toUpperCase();
   const client = await db();
-  await client.from("gift_codes").insert({ code, plan: s.tg_trial_plan || "plus", days, max_uses: 1 });
-  await addPoints(user.tg_id, -cost, "exchange", `${days} يوم اشتراك`);
+  const { data: code, error } = await client.rpc("tg_exchange_code", { p_tg_id: user.tg_id, p_days: days });
+  if (error || !code) return notify(user.tg_id, "تعذّر الاستبدال؛ لم يتم خصم نقاطك.");
   await notify(user.tg_id, `🎟️ كود ${days} يوم: <code>${code}</code>\nاستخدمه في الموقع من صفحة الاشتراك.`);
 }
 

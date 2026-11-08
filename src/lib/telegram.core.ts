@@ -102,14 +102,8 @@ export async function logBot(adminTgId: number, action: string, detail = "") {
 /** Move points and keep the ledger + totals consistent. */
 export async function addPoints(tgId: number, delta: number, kind: string, note = "") {
   const client = await db();
-  const { data: u } = await client.from("tg_users").select("points, points_earned, points_spent").eq("tg_id", tgId).maybeSingle();
-  if (!u) return;
-  await client.from("tg_users").update({
-    points: Math.max(0, u.points + delta),
-    points_earned: u.points_earned + Math.max(0, delta),
-    points_spent: u.points_spent + Math.max(0, -delta),
-  }).eq("tg_id", tgId);
-  await client.from("tg_txn").insert({ tg_id: tgId, kind, amount: delta, note });
+  const { data, error } = await client.rpc("tg_move_points", { p_tg_id: tgId, p_delta: delta, p_kind: kind, p_note: note });
+  if (error || !data) throw new Error("الرصيد لا يكفي أو تعذّر حفظ العملية");
 }
 
 /** Give a badge once; returns true the first time. */

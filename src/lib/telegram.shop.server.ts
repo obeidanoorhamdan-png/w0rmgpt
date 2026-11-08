@@ -5,7 +5,7 @@ type Plan = { plan: string; label: string; price: string };
 function catalog(s: S): Plan[] {
   return Array.isArray(s.tg_plans) ? s.tg_plans.flatMap((p) => {
     if (!p || typeof p !== "object" || Array.isArray(p)) return [];
-    return typeof p.plan === "string" && typeof p.label === "string" && typeof p.price === "string" ? [{ plan: p.plan, label: p.label, price: p.price }] : [];
+    return typeof p['plan'] === "string" && typeof p['label'] === "string" && typeof p['price'] === "string" ? [{ plan: p['plan'], label: p['label'], price: p['price'] }] : [];
   }) : [];
 }
 

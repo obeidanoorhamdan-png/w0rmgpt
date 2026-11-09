@@ -1219,6 +1219,7 @@ export type Database = {
     }
     Functions: {
       claim_daily: { Args: never; Returns: undefined }
+      tg_checkout: { Args: { p_tg_id: number }; Returns: Json }
       tg_claim_reward: {
         Args: {
           p_day: string
@@ -1241,6 +1242,10 @@ export type Database = {
           p_tg_id: number
         }
         Returns: boolean
+      }
+      tg_order_action: {
+        Args: { p_action: string; p_days: number; p_id: string }
+        Returns: Json
       }
     }
     Enums: {

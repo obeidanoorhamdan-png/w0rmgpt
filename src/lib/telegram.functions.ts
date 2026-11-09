@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { telegramSettingsSchema as settingsSchema, definedFields, orderActionSchema } from "./telegram.schemas";
 
 type T = { token: string };
 const auth = async (token: string) => {
@@ -23,32 +24,11 @@ export const tgOverview = createServerFn({ method: "POST" })
     return { settings: s, drops: drops ?? [], stats, connected: Boolean(process.env["TELEGRAM_API_KEY"]) };
   });
 
-const settingsSchema = z.object({
-  tg_enabled: z.boolean(),
-  tg_admin_ids: z.string().max(500),
-  tg_channel: z.string().max(100),
-  tg_bot_username: z.string().max(100),
-  tg_store_text: z.string().min(1).max(3000),
-  tg_contact: z.string().max(100),
-  tg_plans: z.array(z.object({ plan: z.string().max(20), label: z.string().max(50), price: z.string().max(50) })).max(10),
-  tg_ref_points: z.number().int().min(0).max(1000),
-  tg_ref_credits: z.number().int().min(0).max(1000),
-  tg_maintenance: z.boolean().optional(),
-  tg_maintenance_text: z.string().min(1).max(1000).optional(),
-  tg_captcha_enabled: z.boolean().optional(),
-  tg_rate_limit: z.number().int().min(1).max(120).optional(),
-  tg_support_enabled: z.boolean().optional(),
-  tg_require_channels: z.array(z.string().regex(/^@[A-Za-z0-9_]{5,32}$/)).max(10).optional(),
-  tg_points_per_day: z.number().int().min(1).max(100000).optional(),
-  tg_daily_box: z.array(z.object({ points: z.number().int().min(0).max(10000), weight: z.number().positive().max(1000) })).min(1).max(20).optional(),
-  tg_spin_prizes: z.array(z.object({ points: z.number().int().min(0).max(10000), weight: z.number().positive().max(1000) })).min(1).max(20).optional(),
-});
-
 export const tgSaveSettings = createServerFn({ method: "POST" })
   .inputValidator((d: T & { patch: z.infer<typeof settingsSchema> }) => ({ token: d.token, patch: settingsSchema.parse(d.patch) }))
   .handler(async ({ data }) => {
     const db = await auth(data.token);
-    const { error } = await db.from("app_settings").update(data.patch).eq("id", 1);
+    const { error } = await db.from("app_settings").update(definedFields(data.patch)).eq("id", 1);
     if (error) throw new Error("تعذّر حفظ الإعدادات");
     return { ok: true };
   });

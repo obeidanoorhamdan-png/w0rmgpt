@@ -1,4 +1,5 @@
 # WORM GPT completion
+- [x] Repair Telegram settings save and verify the admin panel; complete order confirmation and support-message history (14-day test order persisted; ticket read/closed; test data removed).
 - [ ] Continue all selected Telegram features: repair current errors and connect the new modules to the bot and admin panel.
 - [ ] Verify Telegram shopping, daily rewards, support, advanced drops, growth and moderation flows; live delivery requires configured bot/channel.
 - [ ] Automatic cryptocurrency payments require a selected payment service and credentials; do not simulate payment confirmation.

@@ -42,15 +42,11 @@ export async function shopAction(user: TGUser, action: string, s: S): Promise<bo
     if (!items.length) { await notify(user.tg_id, "السلة فارغة."); return true; }
     const contact = s.tg_contact.replace(/^@/, "");
     if (!contact) { await notify(user.tg_id, "لم يُضبط التواصل للشراء بعد."); return true; }
-    const rows = items.flatMap((key) => {
-      const p = plans.find((x) => x.plan === key);
-      return p ? [{ tg_id: user.tg_id, plan: p.plan, label: p.label, price: p.price, method: "contact", status: "pending" }] : [];
-    });
-    if (!rows.length) return true;
-    const { data: orders, error } = await client.from("tg_orders").insert(rows).select("id,label");
+    const { data: result, error } = await client.rpc("tg_checkout", { p_tg_id: user.tg_id });
     if (error) throw new Error("تعذّر إنشاء الطلب");
-    await client.from("tg_cart").upsert({ tg_id: user.tg_id, items: [] });
-    await notify(user.tg_id, `🧾 تم تسجيل طلبك، بانتظار تأكيد الدفع من الأدمن.\n${orders?.map((o) => `${esc(o.label)}: <code>${o.id}</code>`).join("\n")}`, [[{ text: "📞 إتمام الشراء", url: `https://t.me/${contact}` }]]);
+    const orders = Array.isArray(result) ? result.flatMap((o) => o && typeof o === "object" && !Array.isArray(o) && typeof o['id'] === "string" && typeof o['label'] === "string" ? [{ id: o['id'], label: o['label'] }] : []) : [];
+    if (!orders.length) { await notify(user.tg_id, "السلة فارغة أو تم تسجيل الطلب بالفعل."); return true; }
+    await notify(user.tg_id, `🧾 تم تسجيل طلبك، بانتظار تأكيد الدفع من الأدمن.\n${orders.map((o) => `${esc(o.label)}: <code>${o.id}</code>`).join("\n")}`, [[{ text: "📞 إتمام الشراء", url: `https://t.me/${contact}` }]]);
     return true;
   }
   await notify(user.tg_id, items.length ? `🛍️ <b>سلتك</b>\n${items.map((key) => { const p = plans.find((x) => x.plan === key); return p ? `${esc(p.label)} — ${esc(p.price)}` : esc(key); }).join("\n")}` : "🛍️ السلة فارغة", [[{ text: "إتمام الطلب", callback_data: "cart:checkout" }, { text: "تفريغ السلة", callback_data: "cart:clear" }], [{ text: "الاشتراكات", callback_data: "plans" }]]);

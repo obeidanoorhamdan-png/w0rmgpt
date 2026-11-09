@@ -19,3 +19,4 @@
 - Use the shared LoadingScreen for initial hydration and router pending states so loading branding stays consistent.
 - Keep message rendering and client-only chat tools separate from ChatView; local drafts never alter server history, and editing reuses text as a new message.
 - Telegram webhook routing delegates shopping and support to server-only modules; point movement, daily claims, and code exchange use service-only transactional database functions to prevent duplicate rewards and overspending.
+- Telegram settings use client-safe validation schemas with undefined fields omitted; checkout and manual order fulfillment use service-only locked transactions so retries cannot duplicate orders or gift codes.

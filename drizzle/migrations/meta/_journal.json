@@ -50,6 +50,13 @@
       "when": 1794150284247,
       "tag": "0006_telegram_atomic_rewards",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1794211455989,
+      "tag": "0007_telegram_checkout_and_fulfillment",
+      "breakpoints": true
     }
   ]
 }

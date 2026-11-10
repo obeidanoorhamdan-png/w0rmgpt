@@ -15,3 +15,4 @@
 - [ ] Complete image generation and verify it.
 - [ ] Add professional live voice calls and verify available boundaries.
 - [ ] Resolve the previously requested API key feature from chat history.
+- [ ] Website expansion: user selected all 72 proposed features (chat, files, images, voice, account, store, admin, advanced); build in phases by group.
